@@ -7,6 +7,7 @@ import {
   ClipboardList,
   LogOut,
   X,
+  ShieldCheck,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -16,6 +17,7 @@ const menu = [
   { to: '/notas', icon: <FileText size={20} />, label: 'Notas Fiscais' },
   { to: '/relatorios', icon: <BarChart2 size={20} />, label: 'Relatórios' },
   { to: '/coleta', icon: <Truck size={20} />, label: 'Coleta' },
+  { to: '/auditoria', icon: <ShieldCheck size={20} />, label: 'Auditoria' },
 ]
 
 export default function Sidebar({ open, onClose }) {

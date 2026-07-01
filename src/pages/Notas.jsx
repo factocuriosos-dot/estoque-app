@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { registrarLog } from '../lib/log'
 import {
   Eye,
   Trash2,
@@ -75,6 +76,12 @@ export default function Notas() {
       .from('notas_fiscais')
       .update(formExpedicao)
       .eq('id', modalExpedicao.id)
+    await registrarLog(
+      'editou',
+      'nota_fiscal',
+      `Atualizou dados de expedição da NF ${modalExpedicao.numero} — Transp: ${formExpedicao.transportadora || '—'}`,
+      modalExpedicao.id,
+    )
     setSalvandoExpedicao(false)
     setModalExpedicao(null)
     carregar()
@@ -112,6 +119,12 @@ export default function Notas() {
     await supabase.from('nota_itens').delete().eq('nota_id', nota.id)
     await supabase.from('movimentacoes').delete().eq('nota_id', nota.id)
     await supabase.from('notas_fiscais').delete().eq('id', nota.id)
+    await registrarLog(
+      'excluiu',
+      'nota_fiscal',
+      `Excluiu NF ${nota.numero}/${nota.serie} (${nota.tipo.toUpperCase()}) — ${nota.fornecedor_destinatario}`,
+      nota.id,
+    )
     carregar()
   }
 
@@ -341,6 +354,12 @@ export default function Notas() {
             'Transportadora não informada no XML — preencha manualmente (ícone do caminhão)',
           )
 
+        await registrarLog(
+          'importou',
+          'nota_fiscal',
+          `Importou NF ${dados.numero}/${dados.serie} como ${tipo.toUpperCase()} — ${dados.fornecedorDestinatario} (${dados.itens.length} item(ns))`,
+          nota.id,
+        )
         resultados.push({
           arquivo: arquivo.name,
           ok: true,

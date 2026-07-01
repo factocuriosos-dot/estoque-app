@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { registrarLog } from '../lib/log'
 import { Truck, CheckSquare, Square, Calendar, Printer } from 'lucide-react'
 
 export default function Coleta() {
@@ -82,6 +83,15 @@ export default function Coleta() {
       .from('notas_fiscais')
       .update({ status: 'agendada' })
       .in('id', selecionadas)
+    const nfsSelecionadas = notas
+      .filter((n) => selecionadas.includes(n.id))
+      .map((n) => n.numero)
+      .join(', ')
+    await registrarLog(
+      'agendou',
+      'coleta',
+      `Agendou coleta de ${selecionadas.length} NF(s): ${nfsSelecionadas}`,
+    )
     setSelecionadas([])
     setProcessando(false)
     carregar()
@@ -94,6 +104,15 @@ export default function Coleta() {
       .from('notas_fiscais')
       .update({ status: 'coletada' })
       .in('id', selecionadas)
+    const nfsSelecionadas = notas
+      .filter((n) => selecionadas.includes(n.id))
+      .map((n) => n.numero)
+      .join(', ')
+    await registrarLog(
+      'confirmou coleta',
+      'coleta',
+      `Confirmou coleta de ${selecionadas.length} NF(s): ${nfsSelecionadas}`,
+    )
     setSelecionadas([])
     setProcessando(false)
     carregar()
@@ -106,6 +125,15 @@ export default function Coleta() {
       .from('notas_fiscais')
       .update({ status: 'pendente' })
       .in('id', selecionadas)
+    const nfsSelecionadas = notas
+      .filter((n) => selecionadas.includes(n.id))
+      .map((n) => n.numero)
+      .join(', ')
+    await registrarLog(
+      'reverteu para pendente',
+      'coleta',
+      `Reverteu ${selecionadas.length} NF(s) para pendente: ${nfsSelecionadas}`,
+    )
     setSelecionadas([])
     setProcessando(false)
     carregar()
@@ -324,6 +352,13 @@ export default function Coleta() {
     const janela = window.open('', '_blank')
     janela.document.write(html)
     janela.document.close()
+
+    const nfsGeradas = notasSelecionadas.map((n) => n.numero).join(', ')
+    await registrarLog(
+      'gerou relatório',
+      'coleta',
+      `Gerou protocolo de expedição de ${notasSelecionadas.length} NF(s): ${nfsGeradas} — Transp: ${transportadoraNome}`,
+    )
 
     carregar()
   }

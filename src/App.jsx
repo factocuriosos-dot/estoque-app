@@ -7,6 +7,7 @@ import Produtos from './pages/Produtos'
 import Notas from './pages/Notas'
 import Relatorios from './pages/Relatorios'
 import Coleta from './pages/Coleta'
+import Auditoria from './pages/Auditoria'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -68,6 +69,14 @@ function AppRoutes() {
         element={
           <PrivateRoute>
             <Coleta />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/auditoria"
+        element={
+          <PrivateRoute>
+            <Auditoria />
           </PrivateRoute>
         }
       />

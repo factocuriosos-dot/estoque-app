@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { registrarLog } from '../lib/log'
 import { Plus, Search, Pencil, Trash2, X, Check } from 'lucide-react'
 
 const unidades = ['UN', 'CX', 'KG', 'LT', 'MT', 'PC', 'PT', 'FD']
@@ -75,22 +76,51 @@ export default function Produtos() {
         .from('produtos')
         .update(form)
         .eq('id', editId)
-      if (error) setErro('Erro ao salvar. Código já existe?')
+      if (error) {
+        setErro('Erro ao salvar. Código já existe?')
+        setSalvando(false)
+        return
+      }
+      await registrarLog(
+        'editou',
+        'produto',
+        `Editou produto ${form.codigo} — ${form.descricao}`,
+        editId,
+      )
     } else {
-      const { error } = await supabase.from('produtos').insert(form)
-      if (error) setErro('Erro ao salvar. Código já existe?')
+      const { data: novo, error } = await supabase
+        .from('produtos')
+        .insert(form)
+        .select()
+        .single()
+      if (error) {
+        setErro('Erro ao salvar. Código já existe?')
+        setSalvando(false)
+        return
+      }
+      await registrarLog(
+        'criou',
+        'produto',
+        `Cadastrou produto ${form.codigo} — ${form.descricao}`,
+        novo?.id,
+      )
     }
 
     setSalvando(false)
-    if (!erro) {
-      setModal(false)
-      carregar()
-    }
+    setModal(false)
+    carregar()
   }
 
   async function excluir(id) {
     if (!confirm('Deseja excluir este produto?')) return
+    const produto = produtos.find((p) => p.id === id)
     await supabase.from('produtos').delete().eq('id', id)
+    await registrarLog(
+      'excluiu',
+      'produto',
+      `Excluiu produto ${produto?.codigo} — ${produto?.descricao}`,
+      id,
+    )
     carregar()
   }
 
@@ -106,7 +136,6 @@ export default function Produtos() {
         </button>
       </div>
 
-      {/* Busca */}
       <div className="relative mb-4">
         <Search size={18} className="absolute left-3 top-2.5 text-gray-400" />
         <input
@@ -118,7 +147,6 @@ export default function Produtos() {
         />
       </div>
 
-      {/* Tabela */}
       <div className="bg-white rounded-xl shadow overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-600 uppercase text-xs">
@@ -188,7 +216,6 @@ export default function Produtos() {
         </table>
       </div>
 
-      {/* Modal */}
       {modal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
@@ -200,7 +227,6 @@ export default function Produtos() {
                 <X size={20} />
               </button>
             </div>
-
             <div className="p-6 flex flex-col gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -213,7 +239,6 @@ export default function Produtos() {
                   placeholder="Ex: 001"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Descrição *
@@ -227,7 +252,6 @@ export default function Produtos() {
                   placeholder="Ex: Parafuso M8"
                 />
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -262,7 +286,6 @@ export default function Produtos() {
                   />
                 </div>
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Preço unitário
@@ -277,9 +300,7 @@ export default function Produtos() {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-
               {erro && <p className="text-red-500 text-sm">{erro}</p>}
-
               <button
                 onClick={salvar}
                 disabled={salvando}
