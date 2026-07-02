@@ -12,7 +12,8 @@ import {
 import { useAuth } from '../contexts/AuthContext'
 
 const menu = [
-  { to: '/', icon: <ClipboardList size={20} />, label: 'Inventário' },
+  { to: '/', icon: <Package size={20} />, label: 'Dashboard' },
+  { to: '/inventario', icon: <ClipboardList size={20} />, label: 'Inventário' },
   { to: '/produtos', icon: <Package size={20} />, label: 'Produtos' },
   { to: '/notas', icon: <FileText size={20} />, label: 'Notas Fiscais' },
   { to: '/relatorios', icon: <BarChart2 size={20} />, label: 'Relatórios' },

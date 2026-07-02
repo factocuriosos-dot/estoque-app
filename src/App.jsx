@@ -8,6 +8,7 @@ import Notas from './pages/Notas'
 import Relatorios from './pages/Relatorios'
 import Coleta from './pages/Coleta'
 import Auditoria from './pages/Auditoria'
+import Dashboard from './pages/Dashboard'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -34,6 +35,14 @@ function AppRoutes() {
       <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
       <Route
         path="/"
+        element={
+          <PrivateRoute>
+            <Dashboard />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/inventario"
         element={
           <PrivateRoute>
             <Inventario />
