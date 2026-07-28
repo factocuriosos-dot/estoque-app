@@ -5,18 +5,34 @@ const AuthContext = createContext({})
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
+  const [perfil, setPerfil] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  async function carregarPerfil(userId) {
+    if (!userId) {
+      setPerfil(null)
+      return
+    }
+    const { data } = await supabase
+      .from('usuarios_perfil')
+      .select('*')
+      .eq('user_id', userId)
+      .single()
+    setPerfil(data || null)
+  }
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setUser(session?.user ?? null)
+      await carregarPerfil(session?.user?.id)
       setLoading(false)
     })
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null)
+      await carregarPerfil(session?.user?.id)
     })
 
     return () => subscription.unsubscribe()
@@ -32,10 +48,15 @@ export function AuthProvider({ children }) {
 
   const signOut = async () => {
     await supabase.auth.signOut()
+    setPerfil(null)
   }
 
+  const isAdmin = perfil?.perfil === 'admin'
+
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
+    <AuthContext.Provider
+      value={{ user, perfil, loading, signIn, signOut, isAdmin }}
+    >
       {children}
     </AuthContext.Provider>
   )

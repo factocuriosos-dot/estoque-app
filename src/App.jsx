@@ -2,23 +2,26 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Layout from './components/Layout'
 import Login from './pages/Login'
+import Dashboard from './pages/Dashboard'
 import Inventario from './pages/Inventario'
 import Produtos from './pages/Produtos'
 import Notas from './pages/Notas'
 import Relatorios from './pages/Relatorios'
 import Coleta from './pages/Coleta'
 import Auditoria from './pages/Auditoria'
-import Dashboard from './pages/Dashboard'
+import Usuarios from './pages/Usuarios'
 
-function PrivateRoute({ children }) {
-  const { user, loading } = useAuth()
+function PrivateRoute({ children, apenasAdmin }) {
+  const { user, loading, isAdmin } = useAuth()
   if (loading)
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-gray-500">Carregando...</p>
       </div>
     )
-  return user ? <Layout>{children}</Layout> : <Navigate to="/login" />
+  if (!user) return <Navigate to="/login" />
+  if (apenasAdmin && !isAdmin) return <Navigate to="/" />
+  return <Layout>{children}</Layout>
 }
 
 function AppRoutes() {
@@ -84,8 +87,16 @@ function AppRoutes() {
       <Route
         path="/auditoria"
         element={
-          <PrivateRoute>
+          <PrivateRoute apenasAdmin>
             <Auditoria />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/usuarios"
+        element={
+          <PrivateRoute apenasAdmin>
+            <Usuarios />
           </PrivateRoute>
         }
       />

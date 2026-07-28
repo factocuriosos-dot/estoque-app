@@ -8,25 +8,36 @@ import {
   LogOut,
   X,
   ShieldCheck,
+  Users,
+  LayoutDashboard,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
-const menu = [
-  { to: '/', icon: <Package size={20} />, label: 'Dashboard' },
-  { to: '/inventario', icon: <ClipboardList size={20} />, label: 'Inventário' },
-  { to: '/produtos', icon: <Package size={20} />, label: 'Produtos' },
-  { to: '/notas', icon: <FileText size={20} />, label: 'Notas Fiscais' },
-  { to: '/relatorios', icon: <BarChart2 size={20} />, label: 'Relatórios' },
-  { to: '/coleta', icon: <Truck size={20} />, label: 'Coleta' },
-  { to: '/auditoria', icon: <ShieldCheck size={20} />, label: 'Auditoria' },
-]
-
 export default function Sidebar({ open, onClose }) {
-  const { user, signOut } = useAuth()
+  const { user, perfil, signOut, isAdmin } = useAuth()
+
+  const menuBase = [
+    { to: '/', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
+    {
+      to: '/inventario',
+      icon: <ClipboardList size={20} />,
+      label: 'Inventário',
+    },
+    { to: '/produtos', icon: <Package size={20} />, label: 'Produtos' },
+    { to: '/notas', icon: <FileText size={20} />, label: 'Notas Fiscais' },
+    { to: '/relatorios', icon: <BarChart2 size={20} />, label: 'Relatórios' },
+    { to: '/coleta', icon: <Truck size={20} />, label: 'Coleta' },
+  ]
+
+  const menuAdmin = [
+    { to: '/auditoria', icon: <ShieldCheck size={20} />, label: 'Auditoria' },
+    { to: '/usuarios', icon: <Users size={20} />, label: 'Usuários' },
+  ]
+
+  const menu = isAdmin ? [...menuBase, ...menuAdmin] : menuBase
 
   return (
     <>
-      {/* Overlay no mobile */}
       {open && (
         <div
           className="fixed inset-0 bg-black bg-opacity-40 z-20 md:hidden"
@@ -54,7 +65,7 @@ export default function Sidebar({ open, onClose }) {
         </div>
 
         {/* Menu */}
-        <nav className="flex-1 py-4">
+        <nav className="flex-1 py-4 overflow-y-auto">
           {menu.map((item) => (
             <NavLink
               key={item.to}
@@ -78,7 +89,12 @@ export default function Sidebar({ open, onClose }) {
 
         {/* Usuário */}
         <div className="px-6 py-4 border-t border-blue-800">
-          <p className="text-xs text-blue-300 mb-3 truncate">{user?.email}</p>
+          <p className="text-xs text-blue-300 mb-1 truncate">
+            {perfil?.nome || user?.email}
+          </p>
+          <p className="text-xs text-blue-400 mb-3 capitalize">
+            {perfil?.perfil === 'admin' ? '⭐ Administrador' : '👤 Operador'}
+          </p>
           <button
             onClick={signOut}
             className="flex items-center gap-2 text-sm text-blue-200 hover:text-white transition"
