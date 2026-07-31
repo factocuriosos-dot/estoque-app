@@ -642,9 +642,7 @@ export default function Coleta() {
                       {n.data_expedicao ? (
                         <span className="flex items-center gap-1 text-green-700 font-medium">
                           <Calendar size={14} />
-                          {new Date(
-                            n.data_expedicao + 'T00:00:00',
-                          ).toLocaleDateString('pt-BR')}
+                          {n.data_expedicao.split('-').reverse().join('/')}
                         </span>
                       ) : (
                         <span className="text-gray-400 text-xs">
