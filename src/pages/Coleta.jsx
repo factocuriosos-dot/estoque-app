@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { registrarLog } from '../lib/log'
-import { Truck, CheckSquare, Square, Calendar, Printer } from 'lucide-react'
+import {
+  Truck,
+  CheckSquare,
+  Square,
+  Calendar,
+  Printer,
+  Search,
+} from 'lucide-react'
 
 export default function Coleta() {
   const [notas, setNotas] = useState([])
@@ -12,6 +19,9 @@ export default function Coleta() {
 
   // Filtro da aba Agendadas
   const [filtroTranspAgendada, setFiltroTranspAgendada] = useState('todas')
+
+  // Filtro da aba Coletadas
+  const [filtroNFColetada, setFiltroNFColetada] = useState('')
 
   // Filtros da aba Histórico
   const [filtroTransportadora, setFiltroTransportadora] = useState('todas')
@@ -43,11 +53,14 @@ export default function Coleta() {
     ),
   ).sort()
 
-  // Notas filtradas por aba (com filtro de transportadora na aba Agendadas)
+  // Notas filtradas por aba
   const filtradas = notas.filter((n) => {
     if (n.status !== aba) return false
     if (aba === 'agendada' && filtroTranspAgendada !== 'todas') {
       return n.transportadora === filtroTranspAgendada
+    }
+    if (aba === 'coletada' && filtroNFColetada.trim()) {
+      return n.numero?.toString().includes(filtroNFColetada.trim())
     }
     return true
   })
@@ -143,6 +156,28 @@ export default function Coleta() {
       'reverteu para pendente',
       'coleta',
       `Reverteu ${selecionadas.length} NF(s) para pendente: ${nfsSelecionadas}`,
+    )
+    setSelecionadas([])
+    setProcessando(false)
+    carregar()
+  }
+
+  // Volta notas da aba Coletadas para Agendada
+  async function voltarParaAgendada() {
+    if (selecionadas.length === 0) return
+    setProcessando(true)
+    await supabase
+      .from('notas_fiscais')
+      .update({ status: 'agendada', data_expedicao: null })
+      .in('id', selecionadas)
+    const nfsSelecionadas = notas
+      .filter((n) => selecionadas.includes(n.id))
+      .map((n) => n.numero)
+      .join(', ')
+    await registrarLog(
+      'reverteu para agendada',
+      'coleta',
+      `Reverteu ${selecionadas.length} NF(s) de Coletada para Agendada: ${nfsSelecionadas}`,
     )
     setSelecionadas([])
     setProcessando(false)
@@ -319,6 +354,7 @@ export default function Coleta() {
                 setAba(a.id)
                 setSelecionadas([])
                 setFiltroTranspAgendada('todas')
+                setFiltroNFColetada('')
               }}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2
                 ${aba === a.id ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}
@@ -371,6 +407,49 @@ export default function Coleta() {
               <p className="text-xs text-gray-400 self-end">
                 {filtradas.length} nota(s) encontrada(s) para esta
                 transportadora
+              </p>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Filtro da aba Coletadas por número de NF */}
+      {aba === 'coletada' && (
+        <div className="bg-white rounded-xl shadow p-4 mb-4 flex flex-wrap gap-4 items-end">
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">
+              Buscar por Número da NF
+            </label>
+            <div className="relative">
+              <Search
+                size={16}
+                className="absolute left-3 top-2 text-gray-400"
+              />
+              <input
+                type="text"
+                value={filtroNFColetada}
+                onChange={(e) => {
+                  setFiltroNFColetada(e.target.value)
+                  setSelecionadas([])
+                }}
+                placeholder="Ex: 34361"
+                className="pl-9 pr-3 border border-gray-300 rounded-lg py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-48"
+              />
+            </div>
+          </div>
+          {filtroNFColetada && (
+            <>
+              <button
+                onClick={() => {
+                  setFiltroNFColetada('')
+                  setSelecionadas([])
+                }}
+                className="text-sm text-red-500 hover:text-red-700"
+              >
+                Limpar filtro
+              </button>
+              <p className="text-xs text-gray-400 self-end">
+                {filtradas.length} nota(s) encontrada(s)
               </p>
             </>
           )}
@@ -462,14 +541,16 @@ export default function Coleta() {
               })}
             </strong>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={gerarRelatorio}
-              className="flex items-center gap-2 bg-purple-600 text-white px-4 py-1.5 rounded-lg text-sm hover:bg-purple-700 transition"
-            >
-              <Printer size={16} />
-              Gerar Relatório
-            </button>
+          <div className="flex gap-2 flex-wrap">
+            {aba === 'agendada' && (
+              <button
+                onClick={gerarRelatorio}
+                className="flex items-center gap-2 bg-purple-600 text-white px-4 py-1.5 rounded-lg text-sm hover:bg-purple-700 transition"
+              >
+                <Printer size={16} />
+                Gerar Relatório
+              </button>
+            )}
             {aba === 'pendente' && (
               <button
                 onClick={agendarColeta}
@@ -496,6 +577,15 @@ export default function Coleta() {
                   Confirmar Coletada
                 </button>
               </>
+            )}
+            {aba === 'coletada' && (
+              <button
+                onClick={voltarParaAgendada}
+                disabled={processando}
+                className="bg-yellow-500 text-white px-4 py-1.5 rounded-lg text-sm hover:bg-yellow-600 transition disabled:opacity-50"
+              >
+                Voltar p/ Agendada
+              </button>
             )}
           </div>
         </div>
@@ -549,14 +639,18 @@ export default function Coleta() {
                         : '-'}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="flex items-center gap-1 text-green-700 font-medium">
-                        <Calendar size={14} />
-                        {n.data_expedicao
-                          ? new Date(
-                              n.data_expedicao + 'T00:00:00',
-                            ).toLocaleDateString('pt-BR')
-                          : 'Não registrada'}
-                      </span>
+                      {n.data_expedicao ? (
+                        <span className="flex items-center gap-1 text-green-700 font-medium">
+                          <Calendar size={14} />
+                          {new Date(
+                            n.data_expedicao + 'T00:00:00',
+                          ).toLocaleDateString('pt-BR')}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 text-xs">
+                          Não registrada
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right font-semibold">
                       {Number(n.valor_total).toLocaleString('pt-BR', {

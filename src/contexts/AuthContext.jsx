@@ -13,12 +13,13 @@ export function AuthProvider({ children }) {
       setPerfil(null)
       return
     }
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('usuarios_perfil')
       .select('*')
       .eq('user_id', userId)
-      .single()
-    setPerfil(data || null)
+
+    console.log('=== PERFIL ===', { userId, data, error })
+    setPerfil(data?.[0] || null)
   }
 
   useEffect(() => {
@@ -63,3 +64,16 @@ export function AuthProvider({ children }) {
 }
 
 export const useAuth = () => useContext(AuthContext)
+async function carregarPerfil(userId) {
+  if (!userId) {
+    setPerfil(null)
+    return
+  }
+  const { data, error } = await supabase
+    .from('usuarios_perfil')
+    .select('*')
+    .eq('user_id', userId)
+    .single()
+  console.log('=== PERFIL ===', { userId, data, error })
+  setPerfil(data || null)
+}
