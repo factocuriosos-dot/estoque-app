@@ -123,9 +123,10 @@ export default function Coleta() {
   async function confirmarColeta() {
     if (selecionadas.length === 0) return
     setProcessando(true)
+    const hoje = new Date().toISOString().split('T')[0]
     await supabase
       .from('notas_fiscais')
-      .update({ status: 'coletada' })
+      .update({ status: 'coletada', data_expedicao: hoje })
       .in('id', selecionadas)
     const nfsSelecionadas = notas
       .filter((n) => selecionadas.includes(n.id))
