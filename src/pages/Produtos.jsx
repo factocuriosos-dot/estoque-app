@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { registrarLog } from '../lib/log'
+import { useAuth } from '../contexts/AuthContext'
 import { Plus, Search, Pencil, Trash2, X, Check } from 'lucide-react'
 
 const unidades = ['UN', 'CX', 'KG', 'LT', 'MT', 'PC', 'PT', 'FD']
@@ -9,17 +10,20 @@ const vazio = {
   codigo: '',
   descricao: '',
   unidade: 'UN',
+  quantidade: 0,
   quantidade_minima: 0,
   preco_unitario: 0,
 }
 
 export default function Produtos() {
+  const { isAdmin } = useAuth()
   const [produtos, setProdutos] = useState([])
   const [busca, setBusca] = useState('')
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(vazio)
   const [editId, setEditId] = useState(null)
+  const [quantidadeAnterior, setQuantidadeAnterior] = useState(0)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState('')
 
@@ -46,6 +50,7 @@ export default function Produtos() {
   function abrirNovo() {
     setForm(vazio)
     setEditId(null)
+    setQuantidadeAnterior(0)
     setErro('')
     setModal(true)
   }
@@ -55,10 +60,12 @@ export default function Produtos() {
       codigo: p.codigo,
       descricao: p.descricao,
       unidade: p.unidade,
+      quantidade: p.quantidade,
       quantidade_minima: p.quantidade_minima,
       preco_unitario: p.preco_unitario,
     })
     setEditId(p.id)
+    setQuantidadeAnterior(p.quantidade)
     setErro('')
     setModal(true)
   }
@@ -81,12 +88,24 @@ export default function Produtos() {
         setSalvando(false)
         return
       }
-      await registrarLog(
-        'editou',
-        'produto',
-        `Editou produto ${form.codigo} — ${form.descricao}`,
-        editId,
-      )
+
+      // Verificar se houve ajuste de quantidade e registrar no log
+      if (Number(form.quantidade) !== Number(quantidadeAnterior)) {
+        const diff = Number(form.quantidade) - Number(quantidadeAnterior)
+        await registrarLog(
+          'ajuste de inventário',
+          'produto',
+          `Ajustou quantidade do produto ${form.codigo} — ${form.descricao}: ${quantidadeAnterior} → ${form.quantidade} (${diff > 0 ? '+' : ''}${diff})`,
+          editId,
+        )
+      } else {
+        await registrarLog(
+          'editou',
+          'produto',
+          `Editou produto ${form.codigo} — ${form.descricao}`,
+          editId,
+        )
+      }
     } else {
       const { data: novo, error } = await supabase
         .from('produtos')
@@ -239,6 +258,7 @@ export default function Produtos() {
                   placeholder="Ex: 001"
                 />
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Descrição *
@@ -252,6 +272,7 @@ export default function Produtos() {
                   placeholder="Ex: Parafuso M8"
                 />
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -286,21 +307,66 @@ export default function Produtos() {
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Preço unitário
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={form.preco_unitario}
-                  onChange={(e) =>
-                    setForm({ ...form, preco_unitario: Number(e.target.value) })
-                  }
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Preço unitário
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={form.preco_unitario}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        preco_unitario: Number(e.target.value),
+                      })
+                    }
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                {/* Campo de quantidade — visível apenas para Admin e somente na edição */}
+                {isAdmin && editId && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Quantidade
+                      <span className="ml-1 text-xs text-yellow-600 font-normal">
+                        (ajuste)
+                      </span>
+                    </label>
+                    <input
+                      type="number"
+                      value={form.quantidade}
+                      onChange={(e) =>
+                        setForm({ ...form, quantidade: Number(e.target.value) })
+                      }
+                      className="w-full border border-yellow-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-yellow-50"
+                    />
+                    {Number(form.quantidade) !== Number(quantidadeAnterior) && (
+                      <p className="text-xs text-yellow-700 mt-1">
+                        Era: {quantidadeAnterior} → Novo: {form.quantidade} (
+                        {Number(form.quantidade) - Number(quantidadeAnterior) >
+                        0
+                          ? '+'
+                          : ''}
+                        {Number(form.quantidade) - Number(quantidadeAnterior)})
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
+
+              {isAdmin && editId && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 text-xs text-yellow-800">
+                  ⚠️ O campo <strong>Quantidade</strong> é para ajuste manual de
+                  inventário. O ajuste será registrado na Auditoria.
+                </div>
+              )}
+
               {erro && <p className="text-red-500 text-sm">{erro}</p>}
+
               <button
                 onClick={salvar}
                 disabled={salvando}
