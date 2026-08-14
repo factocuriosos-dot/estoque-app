@@ -24,6 +24,7 @@ export default function Produtos() {
   const [form, setForm] = useState(vazio)
   const [editId, setEditId] = useState(null)
   const [quantidadeAnterior, setQuantidadeAnterior] = useState(0)
+  const [observacao, setObservacao] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState('')
 
@@ -51,6 +52,7 @@ export default function Produtos() {
     setForm(vazio)
     setEditId(null)
     setQuantidadeAnterior(0)
+    setObservacao('')
     setErro('')
     setModal(true)
   }
@@ -66,6 +68,7 @@ export default function Produtos() {
     })
     setEditId(p.id)
     setQuantidadeAnterior(p.quantidade)
+    setObservacao('')
     setErro('')
     setModal(true)
   }
@@ -95,7 +98,7 @@ export default function Produtos() {
         await registrarLog(
           'ajuste de inventário',
           'produto',
-          `Ajustou quantidade do produto ${form.codigo} — ${form.descricao}: ${quantidadeAnterior} → ${form.quantidade} (${diff > 0 ? '+' : ''}${diff})`,
+          `Ajustou quantidade do produto ${form.codigo} — ${form.descricao}: ${quantidadeAnterior} → ${form.quantidade} (${diff > 0 ? '+' : ''}${diff})${observacao ? ` | Motivo: ${observacao}` : ''}`,
           editId,
         )
       } else {
@@ -359,10 +362,28 @@ export default function Produtos() {
               </div>
 
               {isAdmin && editId && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 text-xs text-yellow-800">
-                  ⚠️ O campo <strong>Quantidade</strong> é para ajuste manual de
-                  inventário. O ajuste será registrado na Auditoria.
-                </div>
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Justificativa do ajuste
+                      <span className="ml-1 text-xs text-gray-400 font-normal">
+                        (opcional)
+                      </span>
+                    </label>
+                    <textarea
+                      value={observacao}
+                      onChange={(e) => setObservacao(e.target.value)}
+                      rows={2}
+                      placeholder="Ex: Correção após contagem física do inventário"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    />
+                  </div>
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 text-xs text-yellow-800">
+                    ⚠️ O campo <strong>Quantidade</strong> é para ajuste manual
+                    de inventário. O ajuste e a justificativa serão registrados
+                    na Auditoria.
+                  </div>
+                </>
               )}
 
               {erro && <p className="text-red-500 text-sm">{erro}</p>}
