@@ -11,6 +11,9 @@ import {
   ArrowUpCircle,
   Truck,
   Check,
+  ClipboardList,
+  CheckSquare,
+  Square,
 } from 'lucide-react'
 
 const expedicaoVazia = {
@@ -30,10 +33,12 @@ export default function Notas() {
   const [modalItens, setModalItens] = useState(null)
   const [itens, setItens] = useState([])
   const [filtroTipo, setFiltroTipo] = useState('todos')
-
   const [modalExpedicao, setModalExpedicao] = useState(null)
   const [formExpedicao, setFormExpedicao] = useState(expedicaoVazia)
   const [salvandoExpedicao, setSalvandoExpedicao] = useState(false)
+
+  // Seleção para mapa cego
+  const [selecionadas, setSelecionadas] = useState([])
 
   useEffect(() => {
     carregar()
@@ -131,7 +136,6 @@ export default function Notas() {
   function parseXML(xmlText, tipoForcado) {
     const parser = new DOMParser()
     const xml = parser.parseFromString(xmlText, 'text/xml')
-
     const get = (tag) => xml.getElementsByTagName(tag)[0]?.textContent || ''
 
     const numero = get('nNF')
@@ -139,26 +143,21 @@ export default function Notas() {
     const chave = get('Id')?.replace('NFe', '') || get('chNFe')
     const dataEmissao = get('dhEmi')?.split('T')[0] || get('dEmi')
     const valorTotal = parseFloat(get('vNF')) || 0
-
     const emitente = get('xNome')
     const cnpjEmit = get('CNPJ')
     const destinatario =
       xml.getElementsByTagName('dest')[0]?.getElementsByTagName('xNome')[0]
         ?.textContent || ''
-
     const tipoReal = tipoForcado
-
     const fornecedorDestinatario =
       tipoReal === 'entrada' ? emitente : destinatario
     const cnpj = cnpjEmit
 
-    // Município e UF do DESTINATÁRIO (para onde a mercadoria vai)
     const enderDest = xml.getElementsByTagName('enderDest')[0]
     const municipioXml =
       enderDest?.getElementsByTagName('xMun')[0]?.textContent || ''
     const ufXml = enderDest?.getElementsByTagName('UF')[0]?.textContent || ''
 
-    // Dados de transporte: transportadora, peso e volumes
     const transp = xml.getElementsByTagName('transp')[0]
     const transportaTag = transp?.getElementsByTagName('transporta')[0]
     const transportadoraXml =
@@ -220,7 +219,6 @@ export default function Notas() {
 
     setProcessando(true)
     setResultado(null)
-
     const resultados = []
 
     for (const arquivo of arquivos) {
@@ -242,7 +240,6 @@ export default function Notas() {
           .from('notas_fiscais')
           .select('id')
           .eq('chave_acesso', dados.chave)
-
         const existe = existeArr?.[0] || null
 
         if (existe) {
@@ -254,8 +251,6 @@ export default function Notas() {
           continue
         }
 
-        // Qtd de volumes: usa o qVol do XML se vier informado,
-        // senão usa a soma das quantidades dos itens como aproximação.
         const somaQuantidadeItens = dados.itens.reduce(
           (acc, it) => acc + it.quantidade,
           0,
@@ -297,7 +292,6 @@ export default function Notas() {
             .from('produtos')
             .select('*')
             .eq('codigo', item.codigo)
-
           let produto = prodArr?.[0] || null
 
           if (!produto) {
@@ -337,7 +331,6 @@ export default function Notas() {
             .from('produtos')
             .update({ quantidade: novaQtd })
             .eq('id', produto.id)
-
           await supabase.from('movimentacoes').insert({
             produto_id: produto.id,
             nota_id: nota.id,
@@ -351,7 +344,7 @@ export default function Notas() {
           detalhesExtra.push(`Transp.: ${dados.transportadoraXml}`)
         if (!dados.transportadoraXml && tipo === 'saida')
           detalhesExtra.push(
-            'Transportadora não informada no XML — preencha manualmente (ícone do caminhão)',
+            'Transportadora não informada no XML — preencha manualmente',
           )
 
         await registrarLog(
@@ -360,6 +353,7 @@ export default function Notas() {
           `Importou NF ${dados.numero}/${dados.serie} como ${tipo.toUpperCase()} — ${dados.fornecedorDestinatario} (${dados.itens.length} item(ns))`,
           nota.id,
         )
+
         resultados.push({
           arquivo: arquivo.name,
           ok: true,
@@ -380,16 +374,258 @@ export default function Notas() {
     e.target.value = ''
   }
 
+  // Gera mapa cego de separação para as notas selecionadas
+  async function gerarMapaCego() {
+    if (selecionadas.length === 0) return
+
+    const notasSelecionadas = notas.filter((n) => selecionadas.includes(n.id))
+    const hoje = new Date().toLocaleDateString('pt-BR')
+    const horaAgora = new Date().toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+
+    let paginasHTML = ''
+
+    for (const nota of notasSelecionadas) {
+      const { data: itensNota } = await supabase
+        .from('nota_itens')
+        .select('*')
+        .eq('nota_id', nota.id)
+        .order('codigo_produto')
+
+      const linhasItens = (itensNota || [])
+        .map(
+          (item, i) => `
+          <tr>
+            <td class="num">${i + 1}</td>
+            <td class="cod">${item.codigo_produto}</td>
+            <td>${item.descricao}</td>
+            <td class="centro">${item.unidade}</td>
+            <td class="vazio"></td>
+          </tr>`,
+        )
+        .join('')
+
+      paginasHTML += `
+        <div class="pagina">
+          <div class="cabecalho">
+            <div class="cab-linha">
+              <span class="cab-label">MAPA DE SEPARAÇÃO</span>
+              <span class="cab-data">Data: ${hoje} — ${horaAgora}</span>
+            </div>
+            <div class="cab-linha">
+              <span><strong>NF:</strong> ${nota.numero}/${nota.serie || '1'}</span>
+              <span><strong>Emissão:</strong> ${nota.data_emissao ? nota.data_emissao.split('-').reverse().join('/') : '-'}</span>
+            </div>
+            <div class="cab-linha">
+              <span><strong>Destinatário:</strong> ${nota.fornecedor_destinatario || '-'}</span>
+              <span><strong>Município/UF:</strong> ${nota.municipio || '-'}${nota.uf ? '/' + nota.uf : ''}</span>
+            </div>
+            <div class="cab-linha">
+              <span><strong>Transportadora:</strong> ${nota.transportadora || '________________________________'}</span>
+              <span><strong>Valor NF:</strong> ${Number(nota.valor_total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th class="num">#</th>
+                <th class="cod">Código</th>
+                <th>Descrição</th>
+                <th class="centro">UN</th>
+                <th class="vazio">Qtd. Contada</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${linhasItens}
+            </tbody>
+          </table>
+
+          <div class="rodape">
+            <div class="rodape-campos">
+              <div class="campo-rodape">
+                <span>Total de Itens:</span>
+                <div class="linha-preench"></div>
+              </div>
+              <div class="campo-rodape">
+                <span>Total de Volumes:</span>
+                <div class="linha-preench"></div>
+              </div>
+            </div>
+
+            <div class="assinaturas">
+              <div class="assinatura">
+                <div class="linha-ass"></div>
+                <span>Separador</span>
+              </div>
+              <div class="assinatura">
+                <div class="linha-ass"></div>
+                <span>Conferente</span>
+              </div>
+            </div>
+          </div>
+        </div>`
+    }
+
+    const html = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<title>Mapa de Separação</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #1f2937; }
+  .pagina {
+    padding: 16mm;
+    page-break-after: always;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .pagina:last-child { page-break-after: avoid; }
+  .cabecalho {
+    border: 2px solid #1f2937;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    border-radius: 4px;
+  }
+  .cab-linha {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+    font-size: 11px;
+  }
+  .cab-linha:first-child {
+    border-bottom: 1px solid #9ca3af;
+    padding-bottom: 4px;
+    margin-bottom: 6px;
+  }
+  .cab-label {
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 1px;
+  }
+  .cab-data { font-size: 10px; color: #6b7280; align-self: flex-end; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    flex: 1;
+  }
+  th, td {
+    border: 1px solid #9ca3af;
+    padding: 5px 7px;
+    font-size: 10.5px;
+    text-align: left;
+  }
+  th { background: #f3f4f6; font-size: 9.5px; text-transform: uppercase; font-weight: bold; }
+  td.num, th.num { text-align: right; width: 30px; }
+  td.cod, th.cod { width: 70px; font-family: monospace; }
+  td.centro, th.centro { text-align: center; width: 40px; }
+  td.vazio, th.vazio { width: 120px; background: #fffef0; text-align: center; }
+  tr:nth-child(even) td { background: #f9fafb; }
+  tr:nth-child(even) td.vazio { background: #fffde7; }
+  .rodape { margin-top: 16px; }
+  .rodape-campos {
+    display: flex;
+    gap: 40px;
+    margin-bottom: 24px;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    background: #f9fafb;
+  }
+  .campo-rodape {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+  }
+  .linha-preench {
+    border-bottom: 1px solid #374151;
+    width: 80px;
+    height: 16px;
+  }
+  .assinaturas {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 32px;
+  }
+  .assinatura { text-align: center; }
+  .linha-ass {
+    border-top: 1px solid #374151;
+    width: 200px;
+    margin-bottom: 4px;
+  }
+  .assinatura span { font-size: 10px; color: #6b7280; }
+  @media print {
+    body { padding: 0; }
+    @page { margin: 8mm; }
+    .pagina { padding: 0; }
+  }
+</style>
+</head>
+<body>
+  ${paginasHTML}
+  <script>window.onload = function() { window.print() }</script>
+</body>
+</html>`
+
+    const janela = window.open('', '_blank')
+    janela.document.write(html)
+    janela.document.close()
+
+    await registrarLog(
+      'gerou mapa cego',
+      'nota_fiscal',
+      `Gerou mapa de separação de ${notasSelecionadas.length} NF(s): ${notasSelecionadas.map((n) => n.numero).join(', ')}`,
+    )
+
+    setSelecionadas([])
+  }
+
+  function toggleSelecao(id) {
+    setSelecionadas((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
+    )
+  }
+
+  function selecionarTodasSaidas() {
+    const saidas = filtradas.filter((n) => n.tipo === 'saida').map((n) => n.id)
+    if (
+      selecionadas.length === saidas.length &&
+      saidas.every((id) => selecionadas.includes(id))
+    ) {
+      setSelecionadas([])
+    } else {
+      setSelecionadas(saidas)
+    }
+  }
+
   const filtradas = notas.filter(
     (n) => filtroTipo === 'todos' || n.tipo === filtroTipo,
   )
+
+  const saidasFiltradas = filtradas.filter((n) => n.tipo === 'saida')
 
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Notas Fiscais</h1>
 
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
+          {selecionadas.length > 0 && (
+            <button
+              onClick={gerarMapaCego}
+              className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition"
+            >
+              <ClipboardList size={18} />
+              Mapa Cego ({selecionadas.length})
+            </button>
+          )}
+
           <label
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white cursor-pointer transition
             ${processando ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}
@@ -424,6 +660,22 @@ export default function Notas() {
         </div>
       </div>
 
+      {/* Aviso de seleção para mapa cego */}
+      {selecionadas.length > 0 && (
+        <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 mb-4 flex items-center justify-between">
+          <span className="text-sm text-purple-800">
+            <strong>{selecionadas.length}</strong> nota(s) de saída
+            selecionada(s) para o mapa cego
+          </span>
+          <button
+            onClick={() => setSelecionadas([])}
+            className="text-xs text-purple-600 hover:text-purple-800"
+          >
+            Limpar seleção
+          </button>
+        </div>
+      )}
+
       {resultado && (
         <div className="mb-4 bg-white rounded-xl shadow p-4 flex flex-col gap-2">
           <div className="flex items-center justify-between mb-1">
@@ -450,7 +702,10 @@ export default function Notas() {
         {['todos', 'entrada', 'saida'].map((t) => (
           <button
             key={t}
-            onClick={() => setFiltroTipo(t)}
+            onClick={() => {
+              setFiltroTipo(t)
+              setSelecionadas([])
+            }}
             className={`px-4 py-1.5 rounded-full text-sm font-medium transition
               ${filtroTipo === t ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}
           >
@@ -463,6 +718,20 @@ export default function Notas() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-600 uppercase text-xs">
             <tr>
+              <th className="px-4 py-3 text-left">
+                <button
+                  onClick={selecionarTodasSaidas}
+                  title="Selecionar todas as notas de saída"
+                  className="text-gray-400 hover:text-purple-600"
+                >
+                  {saidasFiltradas.length > 0 &&
+                  saidasFiltradas.every((n) => selecionadas.includes(n.id)) ? (
+                    <CheckSquare size={16} className="text-purple-600" />
+                  ) : (
+                    <Square size={16} />
+                  )}
+                </button>
+              </th>
               <th className="px-4 py-3 text-left">Nº</th>
               <th className="px-4 py-3 text-left">Tipo</th>
               <th className="px-4 py-3 text-left">Fornecedor/Destinatário</th>
@@ -476,19 +745,38 @@ export default function Notas() {
           <tbody className="divide-y divide-gray-100">
             {loading ? (
               <tr>
-                <td colSpan={8} className="text-center py-8 text-gray-400">
+                <td colSpan={9} className="text-center py-8 text-gray-400">
                   Carregando...
                 </td>
               </tr>
             ) : filtradas.length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-center py-8 text-gray-400">
+                <td colSpan={9} className="text-center py-8 text-gray-400">
                   Nenhuma nota encontrada.
                 </td>
               </tr>
             ) : (
               filtradas.map((n) => (
-                <tr key={n.id} className="hover:bg-gray-50">
+                <tr
+                  key={n.id}
+                  className={`hover:bg-gray-50 ${selecionadas.includes(n.id) ? 'bg-purple-50' : ''}`}
+                >
+                  <td className="px-4 py-3">
+                    {n.tipo === 'saida' ? (
+                      <button
+                        onClick={() => toggleSelecao(n.id)}
+                        className="text-gray-400 hover:text-purple-600"
+                      >
+                        {selecionadas.includes(n.id) ? (
+                          <CheckSquare size={16} className="text-purple-600" />
+                        ) : (
+                          <Square size={16} />
+                        )}
+                      </button>
+                    ) : (
+                      <span className="w-4 block" />
+                    )}
+                  </td>
                   <td className="px-4 py-3 font-mono">
                     {n.numero}/{n.serie}
                   </td>
@@ -626,7 +914,7 @@ export default function Notas() {
         </div>
       )}
 
-      {/* Modal expedição (agora serve só para AJUSTES manuais, já vem pré-preenchido do XML) */}
+      {/* Modal expedição */}
       {modalExpedicao && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
@@ -638,13 +926,11 @@ export default function Notas() {
                 <X size={20} />
               </button>
             </div>
-
             <div className="p-6 flex flex-col gap-4">
               <p className="text-xs text-gray-500 -mt-2">
                 Esses dados já vêm preenchidos automaticamente pelo XML. Ajuste
                 aqui apenas se necessário.
               </p>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Transportadora
@@ -661,7 +947,6 @@ export default function Notas() {
                   placeholder="Ex: CINCO LOG TRANSPORTES EIRELI - ME"
                 />
               </div>
-
               <div className="grid grid-cols-3 gap-4">
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -697,7 +982,6 @@ export default function Notas() {
                   />
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -733,7 +1017,6 @@ export default function Notas() {
                   />
                 </div>
               </div>
-
               <button
                 onClick={salvarExpedicao}
                 disabled={salvandoExpedicao}
