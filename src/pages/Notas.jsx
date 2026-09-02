@@ -37,7 +37,6 @@ export default function Notas() {
   const [formExpedicao, setFormExpedicao] = useState(expedicaoVazia)
   const [salvandoExpedicao, setSalvandoExpedicao] = useState(false)
 
-  // Seleção para mapa cego
   const [selecionadas, setSelecionadas] = useState([])
 
   useEffect(() => {
@@ -374,7 +373,6 @@ export default function Notas() {
     e.target.value = ''
   }
 
-  // Gera mapa cego de separação para as notas selecionadas
   async function gerarMapaCego() {
     if (selecionadas.length === 0) return
 
@@ -392,7 +390,6 @@ export default function Notas() {
         .from('nota_itens')
         .select('*')
         .eq('nota_id', nota.id)
-        .order('codigo_produto')
 
       const linhasItens = (itensNota || [])
         .map(
@@ -479,32 +476,31 @@ export default function Notas() {
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #1f2937; }
   .pagina {
-    padding: 16mm;
+    padding: 10mm 14mm;
     page-break-after: always;
-    min-height: 100vh;
     display: flex;
     flex-direction: column;
   }
   .pagina:last-child { page-break-after: avoid; }
   .cabecalho {
     border: 2px solid #1f2937;
-    padding: 8px 12px;
-    margin-bottom: 12px;
+    padding: 6px 10px;
+    margin-bottom: 8px;
     border-radius: 4px;
   }
   .cab-linha {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
     font-size: 11px;
   }
   .cab-linha:first-child {
     border-bottom: 1px solid #9ca3af;
-    padding-bottom: 4px;
-    margin-bottom: 6px;
+    padding-bottom: 3px;
+    margin-bottom: 4px;
   }
   .cab-label {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: bold;
     letter-spacing: 1px;
   }
@@ -512,27 +508,26 @@ export default function Notas() {
   table {
     width: 100%;
     border-collapse: collapse;
-    flex: 1;
   }
   th, td {
     border: 1px solid #9ca3af;
-    padding: 5px 7px;
+    padding: 3px 6px;
     font-size: 10.5px;
     text-align: left;
   }
   th { background: #f3f4f6; font-size: 9.5px; text-transform: uppercase; font-weight: bold; }
-  td.num, th.num { text-align: right; width: 30px; }
-  td.cod, th.cod { width: 70px; font-family: monospace; }
-  td.centro, th.centro { text-align: center; width: 40px; }
-  td.vazio, th.vazio { width: 120px; background: #fffef0; text-align: center; }
+  td.num, th.num { text-align: right; width: 28px; }
+  td.cod, th.cod { width: 65px; font-family: monospace; }
+  td.centro, th.centro { text-align: center; width: 35px; }
+  td.vazio, th.vazio { width: 110px; background: #fffef0; text-align: center; }
   tr:nth-child(even) td { background: #f9fafb; }
   tr:nth-child(even) td.vazio { background: #fffde7; }
-  .rodape { margin-top: 16px; }
+  .rodape { margin-top: 10px; }
   .rodape-campos {
     display: flex;
     gap: 40px;
-    margin-bottom: 24px;
-    padding: 8px 12px;
+    margin-bottom: 20px;
+    padding: 6px 10px;
     border: 1px solid #d1d5db;
     border-radius: 4px;
     background: #f9fafb;
@@ -551,7 +546,7 @@ export default function Notas() {
   .assinaturas {
     display: flex;
     justify-content: space-around;
-    margin-top: 32px;
+    margin-top: 24px;
   }
   .assinatura { text-align: center; }
   .linha-ass {
@@ -660,7 +655,6 @@ export default function Notas() {
         </div>
       </div>
 
-      {/* Aviso de seleção para mapa cego */}
       {selecionadas.length > 0 && (
         <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 mb-4 flex items-center justify-between">
           <span className="text-sm text-purple-800">
@@ -853,7 +847,6 @@ export default function Notas() {
         </table>
       </div>
 
-      {/* Modal itens */}
       {modalItens && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col">
@@ -914,7 +907,6 @@ export default function Notas() {
         </div>
       )}
 
-      {/* Modal expedição */}
       {modalExpedicao && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
