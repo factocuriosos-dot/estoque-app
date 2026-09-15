@@ -128,10 +128,16 @@ export default function Coleta() {
     const obsAntiga = nota?.observacao || '(vazio)'
     const obsFinal = novaObservacao.trim()
 
-    await supabase
+    const { error } = await supabase
       .from('notas_fiscais')
       .update({ observacao: obsFinal })
       .eq('id', editandoObs)
+
+    if (error) {
+      console.error('Erro ao salvar observação:', error.message)
+      alert(`Erro ao salvar observação: ${error.message}`)
+      return
+    }
 
     await registrarLog(
       obsFinal ? 'editou observação' : 'removeu observação',
@@ -408,6 +414,7 @@ export default function Coleta() {
           className="border border-blue-400 rounded px-2 py-1 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">—</option>
+          <option value="NÃO COLETADA">NÃO COLETADA</option>
           {transportadorasUnicas.map((t) => (
             <option key={t} value={t}>
               {t}
