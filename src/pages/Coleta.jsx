@@ -521,6 +521,7 @@ export default function Coleta() {
               className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[260px]"
             >
               <option value="todas">Todas as transportadoras</option>
+              <option value="NÃO COLETADA">NÃO COLETADA</option>
               {transportadorasUnicas.map((t) => (
                 <option key={t} value={t}>
                   {t}
@@ -602,6 +603,7 @@ export default function Coleta() {
               className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[220px]"
             >
               <option value="todas">Todas as transportadoras</option>
+              <option value="NÃO COLETADA">NÃO COLETADA</option>
               {transportadorasUnicas.map((t) => (
                 <option key={t} value={t}>
                   {t}
