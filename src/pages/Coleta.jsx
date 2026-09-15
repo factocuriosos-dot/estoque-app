@@ -25,6 +25,7 @@ export default function Coleta() {
   const [filtroNumero, setFiltroNumero] = useState('')
 
   const [editandoTransp, setEditandoTransp] = useState(null)
+  const [editandoObs, setEditandoObs] = useState(null)
 
   async function carregar() {
     setLoading(true)
@@ -114,6 +115,31 @@ export default function Coleta() {
     )
 
     setEditandoTransp(null)
+    carregar()
+  }
+
+  async function salvarObservacao(novaObservacao) {
+    if (!editandoObs) {
+      setEditandoObs(null)
+      return
+    }
+
+    const nota = notas.find((n) => n.id === editandoObs)
+    const obsAntiga = nota?.observacao || '(vazio)'
+    const obsFinal = novaObservacao.trim()
+
+    await supabase
+      .from('notas_fiscais')
+      .update({ observacao: obsFinal })
+      .eq('id', editandoObs)
+
+    await registrarLog(
+      obsFinal ? 'editou observação' : 'removeu observação',
+      'coleta',
+      `Observação da NF ${nota?.numero} alterada de "${obsAntiga}" para "${obsFinal || '(vazio)'}"`,
+    )
+
+    setEditandoObs(null)
     carregar()
   }
 
@@ -392,6 +418,46 @@ export default function Coleta() {
     )
   }
 
+  function CelulaObservacao({ nota }) {
+    if (editandoObs !== nota.id) {
+      return (
+        <td
+          className="px-4 py-3 text-gray-500 max-w-[200px] truncate cursor-pointer hover:bg-yellow-50"
+          title="Clique para editar"
+          onClick={(e) => {
+            e.stopPropagation()
+            setEditandoObs(nota.id)
+          }}
+        >
+          {nota.observacao || (
+            <span className="text-gray-300 italic">adicionar</span>
+          )}
+        </td>
+      )
+    }
+
+    return (
+      <td className="px-1 py-1" onClick={(e) => e.stopPropagation()}>
+        <input
+          type="text"
+          autoFocus
+          defaultValue={nota.observacao || ''}
+          placeholder="Digite a observação..."
+          onBlur={(e) => salvarObservacao(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              salvarObservacao(e.target.value)
+            }
+            if (e.key === 'Escape') {
+              setEditandoObs(null)
+            }
+          }}
+          className="border border-blue-400 rounded px-2 py-1 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </td>
+    )
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -417,6 +483,7 @@ export default function Coleta() {
                 setFiltroTranspAgendada('todas')
                 setFiltroNFColetada('')
                 setEditandoTransp(null)
+                setEditandoObs(null)
               }}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2
                 ${aba === a.id ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}
@@ -658,6 +725,7 @@ export default function Coleta() {
                 <th className="px-4 py-3 text-left">Nº</th>
                 <th className="px-4 py-3 text-left">Destinatário</th>
                 <th className="px-4 py-3 text-left">Transportadora</th>
+                <th className="px-4 py-3 text-left">Observação</th>
                 <th className="px-4 py-3 text-left">Município/UF</th>
                 <th className="px-4 py-3 text-left">Emissão</th>
                 <th className="px-4 py-3 text-left">Coletada em</th>
@@ -667,13 +735,13 @@ export default function Coleta() {
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-gray-400">
+                  <td colSpan={8} className="text-center py-8 text-gray-400">
                     Carregando...
                   </td>
                 </tr>
               ) : historico.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-gray-400">
+                  <td colSpan={8} className="text-center py-8 text-gray-400">
                     Nenhuma coleta encontrada para os filtros selecionados.
                   </td>
                 </tr>
@@ -685,6 +753,7 @@ export default function Coleta() {
                     </td>
                     <td className="px-4 py-3">{n.fornecedor_destinatario}</td>
                     <CelulaTransportadora nota={n} />
+                    <CelulaObservacao nota={n} />
                     <td className="px-4 py-3 text-gray-500">
                       {n.municipio ? `${n.municipio}/${n.uf || ''}` : '-'}
                     </td>
@@ -740,6 +809,7 @@ export default function Coleta() {
                 <th className="px-4 py-3 text-left">Nº</th>
                 <th className="px-4 py-3 text-left">Destinatário</th>
                 <th className="px-4 py-3 text-left">Transportadora</th>
+                <th className="px-4 py-3 text-left">Observação</th>
                 <th className="px-4 py-3 text-left">Emissão</th>
                 <th className="px-4 py-3 text-right">Valor</th>
               </tr>
@@ -747,13 +817,13 @@ export default function Coleta() {
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-gray-400">
+                  <td colSpan={7} className="text-center py-8 text-gray-400">
                     Carregando...
                   </td>
                 </tr>
               ) : filtradas.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-gray-400">
+                  <td colSpan={7} className="text-center py-8 text-gray-400">
                     Nenhuma nota nesta categoria.
                   </td>
                 </tr>
@@ -776,6 +846,7 @@ export default function Coleta() {
                     </td>
                     <td className="px-4 py-3">{n.fornecedor_destinatario}</td>
                     <CelulaTransportadora nota={n} />
+                    <CelulaObservacao nota={n} />
                     <td className="px-4 py-3 flex items-center gap-1 text-gray-500">
                       <Calendar size={14} />
                       {n.data_emissao
