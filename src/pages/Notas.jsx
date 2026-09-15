@@ -250,6 +250,34 @@ export default function Notas() {
           continue
         }
 
+        // VALIDAÇÃO: para notas de saída, verifica saldo antes de importar
+        if (tipo === 'saida') {
+          const semSaldo = []
+
+          for (const item of dados.itens) {
+            const { data: prodArr } = await supabase
+              .from('produtos')
+              .select('quantidade')
+              .eq('codigo', item.codigo)
+            const saldo = Number(prodArr?.[0]?.quantidade) || 0
+
+            if (saldo < item.quantidade) {
+              semSaldo.push(
+                `${item.codigo} — ${item.descricao} (saldo: ${saldo}, necessário: ${item.quantidade})`,
+              )
+            }
+          }
+
+          if (semSaldo.length > 0) {
+            resultados.push({
+              arquivo: arquivo.name,
+              ok: false,
+              msg: `Nota ${dados.numero} NÃO importada — saldo insuficiente: ${semSaldo.join(' | ')}`,
+            })
+            continue
+          }
+        }
+
         const somaQuantidadeItens = dados.itens.reduce(
           (acc, it) => acc + it.quantidade,
           0,
