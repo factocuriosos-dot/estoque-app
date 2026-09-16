@@ -329,7 +329,7 @@ export default function Devolucoes() {
           </div>
           <div>
             <label className="block text-xs text-gray-500 mb-1">
-              Data de emissão
+              Data do Recebimento
             </label>
             <input
               type="date"

@@ -37,7 +37,7 @@ export default function Relatorios() {
     const { data } = await supabase
       .from('movimentacoes')
       .select(
-        '*, produtos (codigo, descricao, unidade), notas_fiscais (numero, serie, fornecedor_destinatario)',
+        '*, produtos (codigo, descricao, unidade), notas_fiscais (numero, serie, fornecedor_destinatario, status)',
       )
       .order('data', { ascending: false })
     setMovimentacoes(data || [])
@@ -245,6 +245,7 @@ export default function Relatorios() {
                 <tr>
                   <th className="px-4 py-3 text-left">Data</th>
                   <th className="px-4 py-3 text-left">Tipo</th>
+                  <th className="px-4 py-3 text-left">Natureza</th>
                   <th className="px-4 py-3 text-left">Produto</th>
                   <th className="px-4 py-3 text-left">Nota Fiscal</th>
                   <th className="px-4 py-3 text-left">Fornecedor/Dest.</th>
@@ -277,6 +278,17 @@ export default function Relatorios() {
                         ${m.tipo === 'entrada' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}
                         >
                           {m.tipo === 'entrada' ? '↑ Entrada' : '↓ Saída'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                            configNatureza[naturezaMovimentacao(m)]?.cls ||
+                            'bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          {configNatureza[naturezaMovimentacao(m)]?.label ||
+                            '-'}
                         </span>
                       </td>
                       <td className="px-4 py-3">
