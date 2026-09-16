@@ -44,7 +44,6 @@ export default function Relatorios() {
     setLoading(false)
   }
 
-  // Busca produtos pelo código ou descrição
   async function buscarProdutos(termo) {
     if (!termo || termo.length < 1) {
       setSugestoes([])
@@ -67,13 +66,30 @@ export default function Relatorios() {
     setHistoricoItem([])
   }
 
+  function naturezaMovimentacao(m) {
+    if (m.tipo === 'entrada') {
+      return m.notas_fiscais?.status === 'devolucao'
+        ? 'devolucao'
+        : 'recebimento'
+    }
+    return 'faturamento'
+  }
+
+  const configNatureza = {
+    faturamento: { label: 'Faturamento', cls: 'bg-orange-100 text-orange-700' },
+    recebimento: { label: 'Recebimento', cls: 'bg-green-100 text-green-700' },
+    devolucao: { label: 'Devolução', cls: 'bg-blue-100 text-blue-700' },
+  }
+
   async function pesquisarHistorico() {
     if (!produtoSelecionado) return
     setLoadingHP(true)
 
     let query = supabase
       .from('movimentacoes')
-      .select('*, notas_fiscais (numero, serie, fornecedor_destinatario, tipo)')
+      .select(
+        '*, notas_fiscais (numero, serie, fornecedor_destinatario, tipo, status)',
+      )
       .eq('produto_id', produtoSelecionado.id)
       .order('data', { ascending: false })
 
@@ -101,7 +117,6 @@ export default function Relatorios() {
     .reduce((acc, m) => acc + Number(m.quantidade), 0)
   const totalNotas = new Set(filtradas.map((m) => m.nota_id)).size
 
-  // Totais do histórico por produto
   const totalEntradasHP = historicoItem
     .filter((m) => m.tipo === 'entrada')
     .reduce((acc, m) => acc + Number(m.quantidade), 0)
@@ -114,7 +129,6 @@ export default function Relatorios() {
     <div>
       <h1 className="text-2xl font-bold text-gray-800 mb-6">Relatórios</h1>
 
-      {/* Abas */}
       <div className="flex gap-2 mb-6">
         <button
           onClick={() => setAba('movimentacoes')}
@@ -308,7 +322,6 @@ export default function Relatorios() {
             </h2>
 
             <div className="flex flex-wrap gap-4 items-end">
-              {/* Campo de busca com autocomplete */}
               <div className="relative flex-1 min-w-[260px]">
                 <label className="block text-xs text-gray-500 mb-1">
                   Código ou descrição do produto
@@ -332,7 +345,6 @@ export default function Relatorios() {
                   />
                 </div>
 
-                {/* Dropdown de sugestões */}
                 {sugestoes.length > 0 && (
                   <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
                     {sugestoes.map((p) => (
@@ -404,7 +416,6 @@ export default function Relatorios() {
             )}
           </div>
 
-          {/* Cards de resumo do produto */}
           {historicoItem.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div className="bg-white rounded-xl shadow p-4 flex items-center gap-4">
@@ -448,13 +459,13 @@ export default function Relatorios() {
             </div>
           )}
 
-          {/* Tabela de histórico */}
           <div className="bg-white rounded-xl shadow overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-600 uppercase text-xs">
                 <tr>
                   <th className="px-4 py-3 text-left">Data</th>
                   <th className="px-4 py-3 text-left">Tipo</th>
+                  <th className="px-4 py-3 text-left">Natureza</th>
                   <th className="px-4 py-3 text-left">Nota Fiscal</th>
                   <th className="px-4 py-3 text-left">
                     Fornecedor/Destinatário
@@ -465,54 +476,68 @@ export default function Relatorios() {
               <tbody className="divide-y divide-gray-100">
                 {loadingHP ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-8 text-gray-400">
+                    <td colSpan={6} className="text-center py-8 text-gray-400">
                       Buscando...
                     </td>
                   </tr>
                 ) : !produtoSelecionado ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-8 text-gray-400">
+                    <td colSpan={6} className="text-center py-8 text-gray-400">
                       Pesquise um produto acima para ver seu histórico.
                     </td>
                   </tr>
                 ) : historicoItem.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-8 text-gray-400">
+                    <td colSpan={6} className="text-center py-8 text-gray-400">
                       Nenhuma movimentação encontrada para este produto no
                       período.
                     </td>
                   </tr>
                 ) : (
-                  historicoItem.map((m) => (
-                    <tr key={m.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-gray-500">
-                        {new Date(m.data).toLocaleDateString('pt-BR')}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-semibold
+                  historicoItem.map((m) => {
+                    const nat = naturezaMovimentacao(m)
+                    const natConf = configNatureza[nat] || {
+                      label: '-',
+                      cls: 'bg-gray-100 text-gray-600',
+                    }
+                    return (
+                      <tr key={m.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-gray-500">
+                          {new Date(m.data).toLocaleDateString('pt-BR')}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-semibold
                         ${m.tipo === 'entrada' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}
-                        >
-                          {m.tipo === 'entrada' ? '↑ Entrada' : '↓ Saída'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-gray-600">
-                        {m.notas_fiscais
-                          ? `NF ${m.notas_fiscais.numero}/${m.notas_fiscais.serie || '1'} (${m.notas_fiscais.tipo === 'entrada' ? 'Entrada' : 'Saída'})`
-                          : '-'}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600 max-w-xs truncate">
-                        {m.notas_fiscais?.fornecedor_destinatario || '-'}
-                      </td>
-                      <td
-                        className={`px-4 py-3 text-right font-bold text-lg
+                          >
+                            {m.tipo === 'entrada' ? '↑ Entrada' : '↓ Saída'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-semibold ${natConf.cls}`}
+                          >
+                            {natConf.label}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 font-mono text-gray-600">
+                          {m.notas_fiscais
+                            ? `NF ${m.notas_fiscais.numero}/${m.notas_fiscais.serie || '1'}`
+                            : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 max-w-xs truncate">
+                          {m.notas_fiscais?.fornecedor_destinatario || '-'}
+                        </td>
+                        <td
+                          className={`px-4 py-3 text-right font-bold text-lg
                       ${m.tipo === 'entrada' ? 'text-green-600' : 'text-orange-600'}`}
-                      >
-                        {m.tipo === 'entrada' ? '+' : '-'}
-                        {m.quantidade}
-                      </td>
-                    </tr>
-                  ))
+                        >
+                          {m.tipo === 'entrada' ? '+' : '-'}
+                          {m.quantidade}
+                        </td>
+                      </tr>
+                    )
+                  })
                 )}
               </tbody>
             </table>
