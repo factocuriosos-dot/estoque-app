@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard'
 import Inventario from './pages/Inventario'
 import Produtos from './pages/Produtos'
 import Notas from './pages/Notas'
+import Devolucoes from './pages/Devolucoes'
 import Relatorios from './pages/Relatorios'
 import Coleta from './pages/Coleta'
 import Auditoria from './pages/Auditoria'
@@ -65,6 +66,14 @@ function AppRoutes() {
         element={
           <PrivateRoute>
             <Notas />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/devolucoes"
+        element={
+          <PrivateRoute>
+            <Devolucoes />
           </PrivateRoute>
         }
       />

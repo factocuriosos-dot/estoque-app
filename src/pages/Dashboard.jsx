@@ -14,6 +14,7 @@ import {
   TrendingDown,
   DollarSign,
   ArrowRight,
+  PackagePlus,
 } from 'lucide-react'
 
 export default function Dashboard() {
@@ -118,6 +119,16 @@ export default function Dashboard() {
       corClaro: 'bg-green-50',
       corTexto: 'text-green-600',
       rota: '/notas',
+    },
+    {
+      titulo: 'Devoluções',
+      descricao:
+        'Registre notas de devolução manualmente e incorpore os itens ao estoque.',
+      icon: <PackagePlus size={28} />,
+      cor: 'bg-teal-600',
+      corClaro: 'bg-teal-50',
+      corTexto: 'text-teal-600',
+      rota: '/devolucoes',
     },
     {
       titulo: 'Relatórios',
