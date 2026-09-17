@@ -41,7 +41,7 @@ export default function Usuarios() {
 
     // Criar usuário no Supabase Auth via API
     const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/auth/v1/admin/users`,
+      `${import.meta.env.VITE_SUPABASE_URL}/supabase.functions.invoke`,
       {
         method: 'POST',
         headers: {
