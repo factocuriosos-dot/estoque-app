@@ -39,49 +39,17 @@ export default function Usuarios() {
     setSalvando(true)
     setErro('')
 
-    // Criar usuário no Supabase Auth via API
-    const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/supabase.functions.invoke`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          email: form.email,
-          password: form.senha,
-          email_confirm: true,
-        }),
-      },
-    )
-
-    const resultado = await response.json()
-
-    if (!response.ok || resultado.error) {
-      setErro(
-        resultado.error?.message ||
-          resultado.msg ||
-          'Erro ao criar usuário. E-mail já existe?',
-      )
-      setSalvando(false)
-      return
-    }
-
-    // Salvar perfil na tabela usuarios_perfil
-    const { error: erroPerfil } = await supabase
-      .from('usuarios_perfil')
-      .insert({
-        user_id: resultado.id,
+    const { data, error } = await supabase.functions.invoke('criar-usuario', {
+      body: {
         nome: form.nome,
+        email: form.email,
+        senha: form.senha,
         perfil: form.perfil,
-      })
+      },
+    })
 
-    if (erroPerfil) {
-      setErro(
-        'Usuário criado mas erro ao salvar perfil. Contate o administrador.',
-      )
+    if (error || data?.error) {
+      setErro(data?.error || error.message || 'Erro ao criar usuário.')
       setSalvando(false)
       return
     }
