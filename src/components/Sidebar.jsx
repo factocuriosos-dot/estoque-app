@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Users,
   LayoutDashboard,
+  Layers,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -25,6 +26,7 @@ export default function Sidebar({ open, onClose }) {
     },
     { to: '/produtos', icon: <Package size={20} />, label: 'Produtos' },
     { to: '/notas', icon: <FileText size={20} />, label: 'Notas Fiscais' },
+    { to: '/paletes', icon: <Layers size={20} />, label: 'Paletes' },
     { to: '/relatorios', icon: <BarChart2 size={20} />, label: 'Relatórios' },
     { to: '/coleta', icon: <Truck size={20} />, label: 'Coleta' },
   ]

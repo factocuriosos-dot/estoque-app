@@ -11,6 +11,9 @@ import Relatorios from './pages/Relatorios'
 import Coleta from './pages/Coleta'
 import Auditoria from './pages/Auditoria'
 import Usuarios from './pages/Usuarios'
+import Paletes from './pages/Paletes'
+import ValePalete from './pages/ValePalete'
+import MovimentacoesPalete from './pages/MovimentacoesPalete'
 
 function PrivateRoute({ children, apenasAdmin }) {
   const { user, loading, isAdmin } = useAuth()
@@ -106,6 +109,30 @@ function AppRoutes() {
         element={
           <PrivateRoute apenasAdmin>
             <Usuarios />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/paletes"
+        element={
+          <PrivateRoute>
+            <Paletes />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/paletes/novo"
+        element={
+          <PrivateRoute>
+            <ValePalete />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/paletes/movimentacoes"
+        element={
+          <PrivateRoute>
+            <MovimentacoesPalete />
           </PrivateRoute>
         }
       />
