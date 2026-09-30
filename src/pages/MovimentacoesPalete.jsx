@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { ArrowLeft, FileText, Truck, Package, Calendar } from 'lucide-react'
+import { ArrowLeft, FileText, Truck, Package, Calendar, Printer } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import ValePaletePrint from '../components/ValePaletePrint'
 
 export default function MovimentacoesPalete() {
   const navigate = useNavigate()
   const [movimentacoes, setMovimentacoes] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [valeParaImprimir, setValeParaImprimir] = useState(null)
   const [filtro, setFiltro] = useState({
     transportadora_id: '',
     tipo_movimentacao: '',
@@ -205,6 +207,7 @@ export default function MovimentacoesPalete() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Qtd</th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -245,6 +248,15 @@ export default function MovimentacoesPalete() {
                         {mov.status}
                       </span>
                     </td>
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        onClick={() => setValeParaImprimir(mov)}
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                        title="Imprimir"
+                      >
+                        <Printer size={16} />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -252,6 +264,14 @@ export default function MovimentacoesPalete() {
           </div>
         )}
       </div>
+
+      {/* Modal de impressão */}
+      {valeParaImprimir && (
+        <ValePaletePrint
+          vale={valeParaImprimir}
+          onClose={() => setValeParaImprimir(null)}
+        />
+      )}
     </div>
   )
 }
