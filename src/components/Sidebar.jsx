@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   Layers,
   Building2,
+  BarChart,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -29,6 +30,7 @@ export default function Sidebar({ open, onClose }) {
     { to: '/notas', icon: <FileText size={20} />, label: 'Notas Fiscais' },
     { to: '/paletes', icon: <Layers size={20} />, label: 'Paletes' },
     { to: '/transportadoras', icon: <Building2 size={20} />, label: 'Transportadoras' },
+    { to: '/paletes/relatorios', icon: <BarChart size={20} />, label: 'Relatórios de Paletes' },
     { to: '/relatorios', icon: <BarChart2 size={20} />, label: 'Relatórios' },
     { to: '/coleta', icon: <Truck size={20} />, label: 'Coleta' },
   ]

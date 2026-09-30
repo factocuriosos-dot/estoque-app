@@ -203,7 +203,7 @@ export default function MovimentacoesPalete() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nº Vale</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Transportadora</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Motorista</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Conferente</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Qtd</th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>

@@ -15,6 +15,7 @@ import Paletes from './pages/Paletes'
 import ValePalete from './pages/ValePalete'
 import MovimentacoesPalete from './pages/MovimentacoesPalete'
 import Transportadoras from './pages/Transportadoras'
+import RelatoriosPaletes from './pages/RelatoriosPaletes'
 
 function PrivateRoute({ children, apenasAdmin }) {
   const { user, loading, isAdmin } = useAuth()
@@ -142,6 +143,14 @@ function AppRoutes() {
         element={
           <PrivateRoute>
             <Transportadoras />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/paletes/relatorios"
+        element={
+          <PrivateRoute>
+            <RelatoriosPaletes />
           </PrivateRoute>
         }
       />

@@ -50,7 +50,7 @@ export default function ValePaletePrint({ vale, onClose }) {
                 <span>${vale.transportadoras?.nome_fantasia || vale.transportadoras?.razao_social || '-'}</span>
               </div>
               <div class="info-item">
-                <label>Motorista:</label>
+                <label>Conferente:</label>
                 <span>${vale.motorista || '-'}</span>
               </div>
               <div class="info-item">
@@ -161,7 +161,7 @@ export default function ValePaletePrint({ vale, onClose }) {
                 <span className="text-sm">{vale.transportadoras?.nome_fantasia || vale.transportadoras?.razao_social || '-'}</span>
               </div>
               <div>
-                <label className="text-xs font-bold text-gray-600 block">Motorista:</label>
+                <label className="text-xs font-bold text-gray-600 block">Conferente:</label>
                 <span className="text-sm">{vale.motorista || '-'}</span>
               </div>
               <div>

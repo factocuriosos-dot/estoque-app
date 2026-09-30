@@ -213,11 +213,11 @@ export default function ValePalete() {
           </select>
         </div>
 
-        {/* Motorista e Placa */}
+        {/* Conferente e Placa */}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Motorista *
+              Conferente *
             </label>
             <input
               type="text"
@@ -225,7 +225,7 @@ export default function ValePalete() {
               value={form.motorista}
               onChange={handleChange}
               required
-              placeholder="Nome do motorista"
+              placeholder="Nome do conferente"
               className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
