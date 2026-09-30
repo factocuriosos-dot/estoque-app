@@ -29,13 +29,13 @@ export default function ValePalete() {
   async function carregarDados() {
     try {
       setLoading(true)
-      
+
       const { data: transpData, error: transpError } = await supabase
         .from('transportadoras')
         .select('*')
         .eq('ativo', true)
         .order('nome_fantasia', { ascending: true })
-      
+
       if (transpError) throw transpError
       setTransportadoras(transpData || [])
 
@@ -44,7 +44,7 @@ export default function ValePalete() {
         .select('*')
         .eq('ativo', true)
         .order('nome', { ascending: true })
-      
+
       if (tiposError) throw tiposError
       setTiposPalete(tiposData || [])
     } catch (err) {
@@ -56,12 +56,12 @@ export default function ValePalete() {
 
   function handleChange(e) {
     const { name, value } = e.target
-    setForm(prev => ({ ...prev, [name]: value }))
+    setForm((prev) => ({ ...prev, [name]: value }))
   }
 
   async function handleSubmit(e) {
     e.preventDefault()
-    
+
     try {
       setSaving(true)
       setError(null)
@@ -72,21 +72,19 @@ export default function ValePalete() {
       const { count } = await supabase
         .from('vale_palete')
         .select('*', { count: 'exact', head: true })
-      
+
       const numero = `VP-${ano}-${String((count || 0) + 1).padStart(4, '0')}`
 
-      const { error: insertError } = await supabase
-        .from('vale_palete')
-        .insert({
-          numero,
-          transportadora_id: form.transportadora_id,
-          motorista: form.motorista,
-          placa: form.placa,
-          tipo_palete_id: form.tipo_palete_id,
-          quantidade: parseInt(form.quantidade),
-          tipo_movimentacao: form.tipo_movimentacao,
-          observacoes: form.observacoes,
-        })
+      const { error: insertError } = await supabase.from('vale_palete').insert({
+        numero,
+        transportadora_id: form.transportadora_id,
+        motorista: form.motorista,
+        placa: form.placa,
+        tipo_palete_id: form.tipo_palete_id,
+        quantidade: parseInt(form.quantidade),
+        tipo_movimentacao: form.tipo_movimentacao,
+        observacoes: form.observacoes,
+      })
 
       if (insertError) throw insertError
 
@@ -131,13 +129,20 @@ export default function ValePalete() {
           <ArrowLeft size={20} />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Emitir Vale Palete</h1>
-          <p className="text-gray-500 mt-1">Preencha os dados para emitir um novo vale</p>
+          <h1 className="text-2xl font-bold text-gray-800">
+            Emitir Vale Palete
+          </h1>
+          <p className="text-gray-500 mt-1">
+            Preencha os dados para emitir um novo vale
+          </p>
         </div>
       </div>
 
       {/* Formulário */}
-      <form onSubmit={handleSubmit} className="bg-white rounded-lg border p-6 space-y-4">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white rounded-lg border p-6 space-y-4"
+      >
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-3">
             <p className="text-red-600 text-sm">{error}</p>
@@ -146,7 +151,9 @@ export default function ValePalete() {
 
         {success && (
           <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-            <p className="text-green-600 text-sm">Vale Palete emitido com sucesso!</p>
+            <p className="text-green-600 text-sm">
+              Vale Palete emitido com sucesso!
+            </p>
           </div>
         )}
 
@@ -165,7 +172,9 @@ export default function ValePalete() {
                 onChange={handleChange}
                 className="text-blue-600"
               />
-              <span className="text-sm">Retirada (transportadora pega paletes)</span>
+              <span className="text-sm">
+                Retirada (transportadora pega paletes)
+              </span>
             </label>
             <label className="flex items-center gap-2">
               <input
@@ -176,7 +185,9 @@ export default function ValePalete() {
                 onChange={handleChange}
                 className="text-blue-600"
               />
-              <span className="text-sm">Devolução (transportadora devolve paletes)</span>
+              <span className="text-sm">
+                Devolução (transportadora devolve paletes)
+              </span>
             </label>
           </div>
         </div>

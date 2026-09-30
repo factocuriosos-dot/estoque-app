@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { Truck, Plus, AlertTriangle, Package } from 'lucide-react'
+import { Truck, Plus, AlertTriangle, Package, History } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 export default function Paletes() {
@@ -53,16 +53,25 @@ export default function Paletes() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Controle de Paletes</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Controle of Paletes</h1>
           <p className="text-gray-500 mt-1">Saldo devedor de paletes por transportadora</p>
         </div>
-        <Link
-          to="/paletes/novo"
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-        >
-          <Plus size={20} />
-          Novo Vale Palete
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            to="/paletes/movimentacoes"
+            className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition"
+          >
+            <History size={20} />
+            Histórico
+          </Link>
+          <Link
+            to="/paletes/novo"
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+          >
+            <Plus size={20} />
+            Novo Vale Palete
+          </Link>
+        </div>
       </div>
 
       {/* Cards de resumo */}
