@@ -13,6 +13,7 @@ import Auditoria from './pages/Auditoria'
 import Usuarios from './pages/Usuarios'
 import Paletes from './pages/Paletes'
 import ValePalete from './pages/ValePalete'
+import EditarValePalete from './pages/EditarValePalete'
 import MovimentacoesPalete from './pages/MovimentacoesPalete'
 import Transportadoras from './pages/Transportadoras'
 import RelatoriosPaletes from './pages/RelatoriosPaletes'
@@ -127,6 +128,14 @@ function AppRoutes() {
         element={
           <PrivateRoute>
             <ValePalete />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/paletes/editar/:id"
+        element={
+          <PrivateRoute>
+            <EditarValePalete />
           </PrivateRoute>
         }
       />
