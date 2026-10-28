@@ -18,6 +18,7 @@ import {
   PackageMinus,
   Undo2,
   Save,
+  Plus,
 } from 'lucide-react'
 
 const expedicaoVazia = {
@@ -35,7 +36,7 @@ export default function Notas() {
   const [processando, setProcessando] = useState(false)
   const [resultado, setResultado] = useState(null)
   const [modalItens, setModalItens] = useState(null)
-  const [itens, setItens] = useState([])
+  const [itensNf, setItensNf] = useState([])
   const [filtroTipo, setFiltroTipo] = useState('todos')
   const [modalExpedicao, setModalExpedicao] = useState(null)
   const [formExpedicao, setFormExpedicao] = useState(expedicaoVazia)
@@ -43,14 +44,23 @@ export default function Notas() {
 
   const [modalMovimentacao, setModalMovimentacao] = useState(false)
   const [tipoMovimento, setTipoMovimento] = useState('entrada')
+  const [numeroNota, setNumeroNota] = useState('')
   const [produtos, setProdutos] = useState([])
-  const [produtoId, setProdutoId] = useState('')
-  const [quantidade, setQuantidade] = useState(1)
-  const [precoUnitario, setPrecoUnitario] = useState(0)
+  const [itens, setItens] = useState([
+    {
+      codigo: '',
+      descricao: '',
+      unidade: 'UN',
+      quantidade: 1,
+      preco_unitario: 0,
+    },
+  ])
   const [dataMov, setDataMov] = useState(new Date().toISOString().split('T')[0])
   const [observacao, setObservacao] = useState('')
+  const [nota, setNota] = useState(null)
   const [salvandoMov, setSalvandoMov] = useState(false)
   const [erroMov, setErroMov] = useState('')
+  const [mensagemMov, setMensagemMov] = useState(null)
 
   const [selecionadas, setSelecionadas] = useState([])
 
@@ -73,7 +83,7 @@ export default function Notas() {
       .from('nota_itens')
       .select('*')
       .eq('nota_id', nota.id)
-    setItens(data || [])
+    setItensNf(data || [])
     setModalItens(nota)
   }
 
@@ -108,12 +118,21 @@ export default function Notas() {
 
   async function abrirModalMovimentacao() {
     setTipoMovimento('entrada')
-    setProdutoId('')
-    setQuantidade(1)
-    setPrecoUnitario(0)
+    setNumeroNota('')
+    setNota(null)
+    setItens([
+      {
+        codigo: '',
+        descricao: '',
+        unidade: 'UN',
+        quantidade: 1,
+        preco_unitario: 0,
+      },
+    ])
     setDataMov(new Date().toISOString().split('T')[0])
     setObservacao('')
     setErroMov('')
+    setMensagemMov(null)
     setModalMovimentacao(true)
 
     const { data } = await supabase
@@ -123,63 +142,186 @@ export default function Notas() {
     setProdutos(data || [])
   }
 
+  async function carregarItensDaNota() {
+    if (!numeroNota.trim()) {
+      setErroMov('Informe o número da nota para carregar os itens.')
+      return
+    }
+
+    const { data: notaEncontrada } = await supabase
+      .from('notas_fiscais')
+      .select('*')
+      .eq('numero', numeroNota.trim())
+      .single()
+
+    if (!notaEncontrada) {
+      setErroMov('Nota não encontrada.')
+      return
+    }
+
+    const { data: itensNota } = await supabase
+      .from('nota_itens')
+      .select('*')
+      .eq('nota_id', notaEncontrada.id)
+
+    const carregados = (itensNota || []).map((i) => ({
+      codigo: i.codigo_produto,
+      descricao: i.descricao,
+      unidade: i.unidade,
+      quantidade: i.quantidade,
+      preco_unitario: i.preco_unitario,
+    }))
+
+    setItens(
+      carregados.length > 0
+        ? carregados
+        : [
+            {
+              codigo: '',
+              descricao: '',
+              unidade: 'UN',
+              quantidade: 1,
+              preco_unitario: 0,
+            },
+          ],
+    )
+    setNota(notaEncontrada)
+  }
+
+  function atualizarItem(index, campo, valor) {
+    setItens((prev) =>
+      prev.map((it, i) => (i === index ? { ...it, [campo]: valor } : it)),
+    )
+  }
+
+  function atualizarItemProduto(index, codigo) {
+    setItens((prev) =>
+      prev.map((it, i) => {
+        if (i !== index) return it
+        const novo = { ...it, codigo: codigo }
+        const p = produtos.find((x) => x.codigo === codigo.trim())
+        if (p) {
+          return {
+            ...novo,
+            descricao: p.descricao,
+            unidade: p.unidade,
+            preco_unitario: p.preco_unitario || 0,
+          }
+        }
+        return novo
+      }),
+    )
+  }
+
+  function adicionarItem() {
+    setItens((prev) => [
+      ...prev,
+      {
+        codigo: '',
+        descricao: '',
+        unidade: 'UN',
+        quantidade: 1,
+        preco_unitario: 0,
+      },
+    ])
+  }
+
+  function removerItem(index) {
+    setItens((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const itensValidos = itens.filter(
+    (i) => i.codigo.trim() && Number(i.quantidade) > 0,
+  )
+
+  const totalValor = itensValidos.reduce(
+    (acc, i) => acc + Number(i.quantidade) * Number(i.preco_unitario || 0),
+    0,
+  )
+
+  const totalItens = itensValidos.reduce(
+    (acc, i) => acc + Number(i.quantidade),
+    0,
+  )
+
+  const totalVolumes = nota?.qtd_volumes ?? totalItens
+
   async function salvarMovimentacao() {
-    if (!produtoId) {
-      setErroMov('Selecione um produto para movimentar.')
+    if (!numeroNota.trim()) {
+      setErroMov('Informe o número da nota.')
       return
     }
 
-    const produto = produtos.find((p) => p.id === produtoId)
-    const qtd = Number(quantidade)
-
-    if (!produto) {
-      setErroMov('Produto não encontrado.')
-      return
-    }
-
-    if (!qtd || qtd <= 0) {
-      setErroMov('Informe uma quantidade maior que zero.')
-      return
-    }
-
-    if (tipoMovimento === 'saida' && qtd > Number(produto.quantidade)) {
+    if (itensValidos.length === 0) {
       setErroMov(
-        `Saldo insuficiente para saída: ${produto.quantidade} ${produto.unidade} disponíveis (mínimo necessário: ${qtd} ${produto.unidade}).`,
+        'Adicione ao menos um item com código e quantidade maior que zero.',
       )
+      return
+    }
+
+    const codigos = itensValidos.map((i) => i.codigo.trim())
+    if (new Set(codigos).size !== codigos.length) {
+      setErroMov('Há itens com código de produto repetido.')
       return
     }
 
     setSalvandoMov(true)
     setErroMov('')
 
-    const delta = tipoMovimento === 'saida' ? -qtd : qtd
-    const novaQuantidade = Number(produto.quantidade) + delta
+    const produtoIds = []
 
-    const { error: erroEstoque } = await supabase
-      .from('produtos')
-      .update({ quantidade: novaQuantidade })
-      .eq('id', produto.id)
+    for (const item of itensValidos) {
+      const { data: prodArr } = await supabase
+        .from('produtos')
+        .select('*')
+        .eq('codigo', item.codigo.trim())
+      const produto = prodArr?.[0] || null
 
-    if (erroEstoque) {
-      setErroMov('Erro ao atualizar o estoque: ' + erroEstoque.message)
-      setSalvandoMov(false)
-      return
-    }
+      if (!produto) {
+        setErroMov(`Produto ${item.codigo.trim()} não encontrado.`)
+        setSalvandoMov(false)
+        return
+      }
 
-    const tipoRegistro =
-      tipoMovimento === 'devolucao' ? 'entrada' : tipoMovimento
+      const qtd = Number(item.quantidade)
 
-    const { error: erroMovDb } = await supabase.from('movimentacoes').insert({
-      produto_id: produto.id,
-      tipo: tipoRegistro,
-      quantidade: qtd,
-      data: dataMov + 'T00:00:00',
-    })
+      if (tipoMovimento === 'saida' && qtd > Number(produto.quantidade)) {
+        setErroMov(
+          `Saldo insuficiente para saída: ${produto.codigo} (${produto.descricao}) — saldo: ${produto.quantidade} ${produto.unidade}, necessário: ${qtd} ${produto.unidade}.`,
+        )
+        setSalvandoMov(false)
+        return
+      }
 
-    if (erroMovDb) {
-      setErroMov('Erro ao registrar a movimentação: ' + erroMovDb.message)
-      setSalvandoMov(false)
-      return
+      const delta = tipoMovimento === 'saida' ? -qtd : qtd
+      const novaQuantidade = Number(produto.quantidade) + delta
+
+      const { error: erroEstoque } = await supabase
+        .from('produtos')
+        .update({ quantidade: novaQuantidade })
+        .eq('id', produto.id)
+
+      if (erroEstoque) {
+        setErroMov('Erro ao atualizar o estoque: ' + erroEstoque.message)
+        setSalvandoMov(false)
+        return
+      }
+
+      const { error: erroMovDb } = await supabase.from('movimentacoes').insert({
+        produto_id: produto.id,
+        tipo: tipoMovimento === 'devolucao' ? 'entrada' : tipoMovimento,
+        quantidade: qtd,
+        data: dataMov + 'T00:00:00',
+        ...(nota ? { nota_id: nota.id } : {}),
+      })
+
+      if (erroMovDb) {
+        setErroMov('Erro ao registrar a movimentação: ' + erroMovDb.message)
+        setSalvandoMov(false)
+        return
+      }
+
+      produtoIds.push(produto.id)
     }
 
     await registrarLog(
@@ -189,12 +331,16 @@ export default function Notas() {
           ? 'registrou devolução'
           : 'registrou entrada',
       'movimentacao',
-      `Registrada movimentação ${tipoMovimento} de ${qtd} un — ${produto.codigo} (${produto.descricao})${observacao ? ' | ' + observacao : ''}`,
-      produto.id,
+      `Registrada movimentação ${tipoMovimento} (${numeroNota.trim()}) com ${itensValidos.length} item(ns)`,
+      produtoIds[0] || null,
     )
 
     setSalvandoMov(false)
     setModalMovimentacao(false)
+    setMensagemMov({
+      tipo: 'ok',
+      texto: `Movimentação ${tipoMovimento} registrada com ${itensValidos.length} item(ns).`,
+    })
   }
 
   async function excluir(nota) {
@@ -1017,7 +1163,7 @@ export default function Notas() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {itens.map((item) => (
+                  {itensNf.map((item) => (
                     <tr key={item.id}>
                       <td className="px-3 py-2 font-mono">
                         {item.codigo_produto}
@@ -1166,7 +1312,7 @@ export default function Notas() {
       {/* Modal de movimentação manual (entrada / saída / devolução) */}
       {modalMovimentacao && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b">
               <h2 className="font-bold text-lg text-gray-800">
                 Nova Movimentação Manual
@@ -1178,97 +1324,209 @@ export default function Notas() {
             <div className="p-6 flex flex-col gap-4">
               {/* Tipo de movimentação */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Tipo de movimentação
                 </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    {
-                      valor: 'entrada',
-                      label: 'Entrada',
-                      icon: <PackagePlus size={20} />,
-                      classes: 'border-green-500 bg-green-50 text-green-700',
-                    },
-                    {
-                      valor: 'saida',
-                      label: 'Saída',
-                      icon: <PackageMinus size={20} />,
-                      classes: 'border-orange-500 bg-orange-50 text-orange-700',
-                    },
-                    {
-                      valor: 'devolucao',
-                      label: 'Devolução',
-                      icon: <Undo2 size={20} />,
-                      classes: 'border-blue-500 bg-blue-50 text-blue-700',
-                    },
-                  ].map((t) => (
-                    <button
-                      key={t.valor}
-                      type="button"
-                      onClick={() => setTipoMovimentacao(t.valor)}
-                      className={`flex flex-col items-center justify-center gap-1 px-2 py-3 rounded-lg border-2 text-sm font-medium transition ${tipoMovimento === t.valor ? t.classes : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}`}
-                    >
-                      {t.icon}
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-xs text-gray-400 mt-2">
-                  {tipoMovimento === 'entrada'
-                    ? 'Entrada: adiciona produtos ao estoque.'
-                    : tipoMovimento === 'saida'
-                      ? 'Saída: remove produtos do estoque (ex: faturamento/retirada).'
-                      : 'Devolução: retorna produtos ao estoque manualmente.'}
-                </p>
-              </div>
-
-              {/* Produto */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Produto *
-                </label>
                 <select
-                  value={produtoId}
-                  onChange={(e) => setProdutoId(e.target.value)}
+                  value={tipoMovimento}
+                  onChange={(e) => setTipoMovimento(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="">Selecione o produto...</option>
-                  {produtos.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.codigo} — {p.descricao} (saldo: {p.quantidade}{' '}
-                      {p.unidade})
-                    </option>
-                  ))}
+                  <option value="entrada">Entrada</option>
+                  <option value="saida">Saída</option>
+                  <option value="devolucao">Devolução</option>
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Quantidade *
-                  </label>
+              {/* Nº da nota */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nº da nota *
+                </label>
+                <div className="flex gap-2">
                   <input
-                    type="number"
-                    min="0"
-                    step="any"
-                    value={quantidade}
-                    onChange={(e) => setQuantidade(Number(e.target.value))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    type="text"
+                    value={numeroNota}
+                    onChange={(e) => setNumeroNota(e.target.value)}
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Ex: 12345"
                   />
+                  <button
+                    type="button"
+                    onClick={carregarItensDaNota}
+                    className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition"
+                  >
+                    <ClipboardList size={16} /> Carregar itens
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Preço unitário
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={precoUnitario}
-                    onChange={(e) => setPrecoUnitario(Number(e.target.value))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+              </div>
+
+              {/* Itens */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-gray-700">Itens</h3>
+                  <button
+                    type="button"
+                    onClick={adicionarItem}
+                    className="flex items-center gap-1 text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition"
+                  >
+                    <Plus size={16} /> Adicionar item
+                  </button>
                 </div>
+
+                {produtos.length > 0 && (
+                  <datalist id="notas-mov-produtos">
+                    {produtos.map((p) => (
+                      <option
+                        key={p.id}
+                        value={p.codigo}
+                        label={`${p.codigo} — ${p.descricao}`}
+                      />
+                    ))}
+                  </datalist>
+                )}
+
+                <div className="flex flex-col gap-3">
+                  {itens.map((item, index) => (
+                    <div
+                      key={index}
+                      className="border border-gray-200 rounded-lg p-3"
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
+                        <div className="md:col-span-4">
+                          <label className="block text-xs text-gray-500 mb-1">
+                            Código *
+                          </label>
+                          <input
+                            list="notas-mov-produtos"
+                            type="text"
+                            value={item.codigo}
+                            onChange={(e) =>
+                              atualizarItemProduto(index, e.target.value)
+                            }
+                            className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-xs text-gray-500 mb-1">
+                            Un.
+                          </label>
+                          <select
+                            value={item.unidade}
+                            onChange={(e) =>
+                              atualizarItem(index, 'unidade', e.target.value)
+                            }
+                            className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            {[
+                              'UN',
+                              'CX',
+                              'KG',
+                              'LT',
+                              'PC',
+                              'PR',
+                              'MT',
+                              'GL',
+                            ].map((u) => (
+                              <option key={u} value={u}>
+                                {u}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-xs text-gray-500 mb-1">
+                            Qtd. *
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="any"
+                            value={item.quantidade}
+                            onChange={(e) =>
+                              atualizarItem(
+                                index,
+                                'quantidade',
+                                Number(e.target.value),
+                              )
+                            }
+                            className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-xs text-gray-500 mb-1">
+                            Preço unit.
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.preco_unitario}
+                            onChange={(e) =>
+                              atualizarItem(
+                                index,
+                                'preco_unitario',
+                                Number(e.target.value),
+                              )
+                            }
+                            className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div className="md:col-span-2 flex items-end justify-end">
+                          <button
+                            type="button"
+                            onClick={() => removerItem(index)}
+                            className="text-gray-300 hover:text-red-500 transition"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between mt-2">
+                        <p className="text-xs text-gray-500 truncate">
+                          {item.descricao ||
+                            (item.codigo ? 'Produto novo' : '')}
+                        </p>
+                        <p className="text-sm font-semibold text-gray-700">
+                          Total:{' '}
+                          {(
+                            Number(item.quantidade) *
+                            Number(item.preco_unitario || 0)
+                          ).toLocaleString('pt-BR', {
+                            style: 'currency',
+                            currency: 'BRL',
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Totais */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="flex flex-wrap gap-6 text-sm text-gray-700">
+                  <div>
+                    <p className="text-xs text-gray-500">Total de itens</p>
+                    <p className="font-bold text-gray-800">{totalItens}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Total de volumes</p>
+                    <p className="font-bold text-gray-800">{totalVolumes}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Valor total</p>
+                    <p className="font-bold text-gray-800">
+                      {totalValor.toLocaleString('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                      })}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400 mt-2">
+                  Total de volumes (NF) para comparação com a nota física.
+                </p>
               </div>
 
               <div>
