@@ -14,6 +14,10 @@ import {
   ClipboardList,
   CheckSquare,
   Square,
+  PackagePlus,
+  PackageMinus,
+  Undo2,
+  Save,
 } from 'lucide-react'
 
 const expedicaoVazia = {
@@ -36,6 +40,17 @@ export default function Notas() {
   const [modalExpedicao, setModalExpedicao] = useState(null)
   const [formExpedicao, setFormExpedicao] = useState(expedicaoVazia)
   const [salvandoExpedicao, setSalvandoExpedicao] = useState(false)
+
+  const [modalMovimentacao, setModalMovimentacao] = useState(false)
+  const [tipoMovimento, setTipoMovimento] = useState('entrada')
+  const [produtos, setProdutos] = useState([])
+  const [produtoId, setProdutoId] = useState('')
+  const [quantidade, setQuantidade] = useState(1)
+  const [precoUnitario, setPrecoUnitario] = useState(0)
+  const [dataMov, setDataMov] = useState(new Date().toISOString().split('T')[0])
+  const [observacao, setObservacao] = useState('')
+  const [salvandoMov, setSalvandoMov] = useState(false)
+  const [erroMov, setErroMov] = useState('')
 
   const [selecionadas, setSelecionadas] = useState([])
 
@@ -89,6 +104,97 @@ export default function Notas() {
     setSalvandoExpedicao(false)
     setModalExpedicao(null)
     carregar()
+  }
+
+  async function abrirModalMovimentacao() {
+    setTipoMovimento('entrada')
+    setProdutoId('')
+    setQuantidade(1)
+    setPrecoUnitario(0)
+    setDataMov(new Date().toISOString().split('T')[0])
+    setObservacao('')
+    setErroMov('')
+    setModalMovimentacao(true)
+
+    const { data } = await supabase
+      .from('produtos')
+      .select('id, codigo, descricao, unidade, quantidade, preco_unitario')
+      .order('codigo')
+    setProdutos(data || [])
+  }
+
+  async function salvarMovimentacao() {
+    if (!produtoId) {
+      setErroMov('Selecione um produto para movimentar.')
+      return
+    }
+
+    const produto = produtos.find((p) => p.id === produtoId)
+    const qtd = Number(quantidade)
+
+    if (!produto) {
+      setErroMov('Produto não encontrado.')
+      return
+    }
+
+    if (!qtd || qtd <= 0) {
+      setErroMov('Informe uma quantidade maior que zero.')
+      return
+    }
+
+    if (tipoMovimento === 'saida' && qtd > Number(produto.quantidade)) {
+      setErroMov(
+        `Saldo insuficiente para saída: ${produto.quantidade} ${produto.unidade} disponíveis (mínimo necessário: ${qtd} ${produto.unidade}).`,
+      )
+      return
+    }
+
+    setSalvandoMov(true)
+    setErroMov('')
+
+    const delta = tipoMovimento === 'saida' ? -qtd : qtd
+    const novaQuantidade = Number(produto.quantidade) + delta
+
+    const { error: erroEstoque } = await supabase
+      .from('produtos')
+      .update({ quantidade: novaQuantidade })
+      .eq('id', produto.id)
+
+    if (erroEstoque) {
+      setErroMov('Erro ao atualizar o estoque: ' + erroEstoque.message)
+      setSalvandoMov(false)
+      return
+    }
+
+    const tipoRegistro =
+      tipoMovimento === 'devolucao' ? 'entrada' : tipoMovimento
+
+    const { error: erroMovDb } = await supabase.from('movimentacoes').insert({
+      produto_id: produto.id,
+      tipo: tipoRegistro,
+      quantidade: qtd,
+      data: dataMov + 'T00:00:00',
+    })
+
+    if (erroMovDb) {
+      setErroMov('Erro ao registrar a movimentação: ' + erroMovDb.message)
+      setSalvandoMov(false)
+      return
+    }
+
+    await registrarLog(
+      tipoMovimento === 'saida'
+        ? 'registrou saída'
+        : tipoMovimento === 'devolucao'
+          ? 'registrou devolução'
+          : 'registrou entrada',
+      'movimentacao',
+      `Registrada movimentação ${tipoMovimento} de ${qtd} un — ${produto.codigo} (${produto.descricao})${observacao ? ' | ' + observacao : ''}`,
+      produto.id,
+    )
+
+    setSalvandoMov(false)
+    setModalMovimentacao(false)
   }
 
   async function excluir(nota) {
@@ -639,6 +745,13 @@ export default function Notas() {
         <h1 className="text-2xl font-bold text-gray-800">Notas Fiscais</h1>
 
         <div className="flex gap-3 flex-wrap">
+          <button
+            onClick={abrirModalMovimentacao}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+          >
+            <PackagePlus size={18} /> Nova Movimentação Manual
+          </button>
+
           {selecionadas.length > 0 && (
             <button
               onClick={gerarMapaCego}
@@ -1044,6 +1157,154 @@ export default function Notas() {
               >
                 <Check size={18} />
                 {salvandoExpedicao ? 'Salvando...' : 'Salvar Dados'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de movimentação manual (entrada / saída / devolução) */}
+      {modalMovimentacao && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <h2 className="font-bold text-lg text-gray-800">
+                Nova Movimentação Manual
+              </h2>
+              <button onClick={() => setModalMovimentacao(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 flex flex-col gap-4">
+              {/* Tipo de movimentação */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tipo de movimentação
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    {
+                      valor: 'entrada',
+                      label: 'Entrada',
+                      icon: <PackagePlus size={20} />,
+                      classes: 'border-green-500 bg-green-50 text-green-700',
+                    },
+                    {
+                      valor: 'saida',
+                      label: 'Saída',
+                      icon: <PackageMinus size={20} />,
+                      classes: 'border-orange-500 bg-orange-50 text-orange-700',
+                    },
+                    {
+                      valor: 'devolucao',
+                      label: 'Devolução',
+                      icon: <Undo2 size={20} />,
+                      classes: 'border-blue-500 bg-blue-50 text-blue-700',
+                    },
+                  ].map((t) => (
+                    <button
+                      key={t.valor}
+                      type="button"
+                      onClick={() => setTipoMovimentacao(t.valor)}
+                      className={`flex flex-col items-center justify-center gap-1 px-2 py-3 rounded-lg border-2 text-sm font-medium transition ${tipoMovimento === t.valor ? t.classes : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}`}
+                    >
+                      {t.icon}
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 mt-2">
+                  {tipoMovimento === 'entrada'
+                    ? 'Entrada: adiciona produtos ao estoque.'
+                    : tipoMovimento === 'saida'
+                      ? 'Saída: remove produtos do estoque (ex: faturamento/retirada).'
+                      : 'Devolução: retorna produtos ao estoque manualmente.'}
+                </p>
+              </div>
+
+              {/* Produto */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Produto *
+                </label>
+                <select
+                  value={produtoId}
+                  onChange={(e) => setProdutoId(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Selecione o produto...</option>
+                  {produtos.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.codigo} — {p.descricao} (saldo: {p.quantidade}{' '}
+                      {p.unidade})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Quantidade *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={quantidade}
+                    onChange={(e) => setQuantidade(Number(e.target.value))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Preço unitário
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={precoUnitario}
+                    onChange={(e) => setPrecoUnitario(Number(e.target.value))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Data
+                </label>
+                <input
+                  type="date"
+                  value={dataMov}
+                  onChange={(e) => setDataMov(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Observação
+                </label>
+                <input
+                  type="text"
+                  value={observacao}
+                  onChange={(e) => setObservacao(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Ex: Entrada manual via conferência"
+                />
+              </div>
+
+              {erroMov && <p className="text-red-500 text-sm">{erroMov}</p>}
+
+              <button
+                onClick={salvarMovimentacao}
+                disabled={salvandoMov}
+                className="flex items-center justify-center gap-2 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+              >
+                <Save size={18} />
+                {salvandoMov ? 'Salvando...' : 'Concluir Movimentação'}
               </button>
             </div>
           </div>
