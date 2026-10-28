@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { registrarLog } from '../lib/log'
 import {
@@ -165,11 +165,11 @@ export default function Notas() {
       .eq('nota_id', notaEncontrada.id)
 
     const carregados = (itensNota || []).map((i) => ({
-      codigo: i.codigo_produto,
-      descricao: i.descricao,
-      unidade: i.unidade,
-      quantidade: i.quantidade,
-      preco_unitario: i.preco_unitario,
+      codigo: i.codigo_produto || i.codigo || '',
+      descricao: i.descricao || '',
+      unidade: i.unidade || 'UN',
+      quantidade: Number(i.quantidade) || 0,
+      preco_unitario: Number(i.preco_unitario) || 0,
     }))
 
     setItens(
