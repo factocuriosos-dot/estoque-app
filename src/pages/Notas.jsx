@@ -165,7 +165,7 @@ export default function Notas() {
       .eq('nota_id', notaEncontrada.id)
 
     const carregados = (itensNota || []).map((i) => ({
-      codigo: i.codigo_produto || i.codigo || '',
+      codigo: (i.codigo_produto || i.codigo_producto || i.codigo || '').trim(),
       descricao: i.descricao || '',
       unidade: i.unidade || 'UN',
       quantidade: Number(i.quantidade) || 0,
@@ -231,7 +231,7 @@ export default function Notas() {
   }
 
   const itensValidos = itens.filter(
-    (i) => i.codigo.trim() && Number(i.quantidade) > 0,
+    (i) => String(i.codigo || '').trim().length > 0 && Number(i.quantidade) > 0,
   )
 
   const totalValor = itensValidos.reduce(
