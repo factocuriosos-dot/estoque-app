@@ -239,12 +239,11 @@ export default function Notas() {
     0,
   )
 
-  const totalItens = itensValidos.reduce(
-    (acc, i) => acc + Number(i.quantidade),
-    0,
-  )
+  const totalItens = itensValidos.length
 
-  const totalVolumes = nota?.qtd_volumes ?? totalItens
+  const totalVolumes =
+    nota?.qtd_volumes ??
+    itensValidos.reduce((acc, i) => acc + Number(i.quantidade), 0);
 
   async function salvarMovimentacao() {
     if (!numeroNota.trim()) {
